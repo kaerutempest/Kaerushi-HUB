@@ -1,5 +1,5 @@
 -- ====================================================================
--- AUTO FISH V4.0 - RAYFIELD UI EDITION
+-- KaeruShi HUBFISH | V0.1 |
 -- Based on Working test.lua Fishing Method
 -- ====================================================================
 
@@ -43,35 +43,67 @@ local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 
 -- ====================================================================
--- ANTI-CHEAT FIX (basic prevention)
+-- ANTI-CHEAT FIX (enhanced)
 -- ====================================================================
 local function AntiCheatFix()
-    -- Attempt to block common kick/crash methods
+    -- Block kick attempts
     local player = LocalPlayer
     if player and player.Kick then
         local oldKick = player.Kick
         player.Kick = function(self, ...)
             print("[Anti-Cheat] ⚠️ Kick attempt blocked")
+            -- Stop fishing to prevent further detection
+            fishingActive = false
             return nil
         end
     end
 
+    -- Block game crash
     if game.Crash then
         game.Crash = function() end
     end
 
-    -- Attempt to hide script from detection (generic)
+    -- Hide script from detection (advanced)
     if debug and debug.setupvalue then
         local gc = getgc and getgc(true) or {}
         for _, v in ipairs(gc) do
-            if type(v) == "function" and tostring(v):lower():match("detect") then
-                debug.setupvalue(v, 1, function() end)
+            if type(v) == "function" then
+                local info = debug.getinfo(v)
+                if info and info.name and info.name:lower():match("detect") then
+                    debug.setupvalue(v, 1, function() end)
+                end
             end
         end
     end
-    print("[Anti-Cheat] Basic protection loaded")
+
+    -- Additional: prevent detection by hooking some game functions (optional)
+    pcall(function()
+        if getgenv and getgenv()._G then
+            -- Attempt to hide from environment scanning
+            getgenv()._G = nil
+        end
+    end)
+
+    print("[Anti-Cheat] Enhanced protection loaded")
 end
 pcall(AntiCheatFix)
+
+-- ====================================================================
+-- HELPER FUNCTIONS FOR RANDOMIZATION
+-- ====================================================================
+local function randomDelay(base, variance)
+    return base + (math.random() * variance * 2 - variance)
+end
+
+-- Generate randomized values for remote parameters (to bypass SHA-256 hash checks)
+local function getChargeValue()
+    -- Base value from original, but add small random variation
+    return 1755848498.4834 + (math.random() * 10 - 5)
+end
+
+local function getMinigameValue()
+    return 1.2854545116425 + (math.random() * 0.1 - 0.05)
+end
 
 -- ====================================================================
 -- CONFIGURATION
@@ -346,39 +378,48 @@ task.spawn(function()
 end)
 
 -- ====================================================================
--- FISHING LOGIC (NORMAL MODE ONLY)
+-- FISHING LOGIC (Modified: randomized delays and parameters)
 -- ====================================================================
 local isFishing = false
 local fishingActive = false
 
--- Helper functions
+-- Helper functions with randomization
 local function castRod()
     pcall(function()
         Events.equip:FireServer(1)
-        task.wait(0.05)
-        Events.charge:InvokeServer(1755848498.4834)
-        task.wait(0.02)
-        Events.minigame:InvokeServer(1.2854545116425, 1)
-        print("[Fishing] 🎣 Cast")
+        task.wait(randomDelay(0.05, 0.02))
+        local chargeVal = getChargeValue()
+        Events.charge:InvokeServer(chargeVal)
+        task.wait(randomDelay(0.02, 0.01))
+        local minigameVal = getMinigameValue()
+        Events.minigame:InvokeServer(minigameVal, 1)
+        print("[Fishing] 🎣 Cast (randomized)")
     end)
 end
 
 local function reelIn()
     pcall(function()
+        -- Single reel, no spam
         Events.fishing:FireServer()
         print("[Fishing] 🎣 Reel")
     end)
 end
 
--- Normal fishing loop
+-- Normal fishing loop with random delays
 local function normalFishingLoop()
     while fishingActive do
         if not isFishing then
             isFishing = true
+            -- Random pre-cast delay (human-like)
+            task.wait(randomDelay(0.2, 0.1))
             castRod()
-            task.wait(Config.FishDelay)
+            -- Wait for fish to bite with random variation
+            local fishWait = randomDelay(Config.FishDelay, 0.15)
+            task.wait(fishWait)
             reelIn()
-            task.wait(Config.CatchDelay)
+            -- Post-reel delay with random variation
+            local catchWait = randomDelay(Config.CatchDelay, 0.1)
+            task.wait(catchWait)
             isFishing = false
         else
             task.wait(0.1)
@@ -387,7 +428,7 @@ local function normalFishingLoop()
 end
 
 -- ====================================================================
--- AUTO CATCH (SPAM SYSTEM)
+-- AUTO CATCH (Modified: single reel with random delay)
 -- ====================================================================
 task.spawn(function()
     while true do
@@ -395,8 +436,11 @@ task.spawn(function()
             pcall(function()
                 Events.fishing:FireServer()
             end)
+            -- Use random delay to avoid pattern
+            task.wait(randomDelay(Config.CatchDelay, 0.1))
+        else
+            task.wait(0.5)
         end
-        task.wait(Config.CatchDelay)
     end
 end)
 
