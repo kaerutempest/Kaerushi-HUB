@@ -1,5 +1,5 @@
--- KaeruShi HUB | V.01 | Full Features + Anti-Cheat
--- Fitur: Auto Fish, Auto Catch, Auto Sell, Teleport, GPU Saver, Auto Favorite, Anti-AFK, Keybind F (toggle UI)
+-- KaeruShi HUB | V.01 | Full Features
+-- Tekan F untuk toggle UI
 
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -7,9 +7,7 @@ local HS = game:GetService("HttpService")
 local UIS = game:GetService("UserInputService")
 local LP = Players.LocalPlayer
 
--- ====================================================================
--- KONFIGURASI
--- ====================================================================
+-- Konfigurasi
 local Config = {
     AutoFish = false,
     AutoCatch = false,
@@ -22,16 +20,14 @@ local Config = {
     SellDelay = 45,
 }
 
--- Helper: random delay (distribusi normal agar lebih alami)
+-- Random delay dengan variasi normal
 local function randDelay(mean, variance)
     local u1, u2 = math.random(), math.random()
     local z0 = math.sqrt(-2 * math.log(u1)) * math.cos(2 * math.pi * u2)
     return math.max(0.05, mean + (variance * z0))
 end
 
--- ====================================================================
--- NETWORK EVENTS (nilai statis asli untuk hash SHA-256)
--- ====================================================================
+-- Remote events (nilai statis asli untuk hash SHA-256)
 local function getRemotes()
     local net = RS.Packages._Index["sleitnick_net@0.2.0"].net
     return {
@@ -46,9 +42,7 @@ local function getRemotes()
 end
 local ev = getRemotes()
 
--- ====================================================================
--- AUTO FAVORITE (module dari game)
--- ====================================================================
+-- Auto Favorite (module dari game)
 local ItemUtility = require(RS.Shared.ItemUtility)
 local Replion = require(RS.Packages.Replion)
 local PlayerData = Replion.Client:WaitReplion("Data")
@@ -93,9 +87,7 @@ task.spawn(function()
     end
 end)
 
--- ====================================================================
--- FISHING CORE
--- ====================================================================
+-- Fishing core
 local active = false
 local casting = false
 
@@ -112,7 +104,7 @@ end
 local function cast()
     pcall(function()
         equipRod()
-        ev.charge:InvokeServer(1755848498.4834)  -- nilai asli (untuk hash)
+        ev.charge:InvokeServer(1755848498.4834)  -- nilai asli (hash valid)
         task.wait(randDelay(0.02, 0.01))
         ev.mini:InvokeServer(1.2854545116425, 1) -- nilai asli
     end)
@@ -122,24 +114,24 @@ local function reel()
     pcall(function() ev.fish:FireServer() end)
 end
 
--- Loop fishing utama
+-- Loop utama
 coroutine.wrap(function()
     while true do
         if active and not casting then
             casting = true
-            task.wait(randDelay(0.4, 0.2))    -- pre-cast
+            task.wait(randDelay(0.4, 0.2))
             cast()
             task.wait(randDelay(Config.FishDelay, 0.3))
             reel()
             task.wait(randDelay(Config.CatchDelay, 0.15))
             casting = false
-            task.wait(randDelay(0.8, 0.5))    -- jeda antar siklus
+            task.wait(randDelay(0.8, 0.5))
         end
         task.wait(0.1)
     end
 end)()
 
--- Auto catch (risky)
+-- Auto catch (opsional, risiko tinggi)
 task.spawn(function()
     while true do
         task.wait(randDelay(Config.CatchDelay, 0.1))
@@ -160,7 +152,7 @@ task.spawn(function()
     end
 end)
 
--- Anti-AFK (gerakan mouse acak halus)
+-- Anti-AFK (gerakan mouse acak)
 task.spawn(function()
     while active do
         task.wait(randDelay(45, 15))
@@ -170,9 +162,7 @@ task.spawn(function()
     end
 end)
 
--- ====================================================================
--- GPU SAVER
--- ====================================================================
+-- GPU Saver
 local gpuActive, screen = false, nil
 local function gpuOn()
     if gpuActive then return end
@@ -214,9 +204,7 @@ local function gpuOff()
     if screen then screen:Destroy() screen = nil end
 end
 
--- ====================================================================
--- TELEPORT LOCATIONS (lengkap dari script asli)
--- ====================================================================
+-- Teleport locations
 local LOCATIONS = {
     Spawn = CFrame.new(45.2788086, 252.562927, 2987.10913, 1, 0, 0, 0, 1, 0, 0, 1),
     ["Sisyphus Statue"] = CFrame.new(-3728.21606, -135.074417, -1012.12744, -0.977224171, 7.74980258e-09, -0.212209702, 1.566994e-08, 1, -3.5640408e-08, 0.212209702, -3.81539813e-08, -0.977224171),
@@ -245,7 +233,7 @@ local function teleportTo(locName)
 end
 
 -- ====================================================================
--- RAYFIELD UI (dengan keybind F untuk toggle)
+-- RAYFIELD UI
 -- ====================================================================
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -262,7 +250,7 @@ local Window = Rayfield:CreateWindow({
    KeySystem = false
 })
 
--- Keybind F untuk toggle UI (minimize/restore)
+-- Keybind F untuk toggle UI
 local function toggleUI()
     local gui = game.CoreGui:FindFirstChild("Rayfield")
     if gui then
@@ -278,7 +266,6 @@ end)
 
 -- ========== TAB AUTOMATION ==========
 local TabAutomation = Window:CreateTab("AUTOMATION", 4483345998)
-
 TabAutomation:CreateSection("— MAIN FISHING —")
 TabAutomation:CreateToggle({
    Name = "Auto Fish",
