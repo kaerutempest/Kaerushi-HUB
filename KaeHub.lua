@@ -1,4 +1,4 @@
--- KaeruShi HUB v0.3 | Manual UI Edition
+-- KaeruShi HUB v0.3 | Manual UI Edition (Fixed)
 -- Anti-Cheat Optimized | No Rayfield
 
 local Players = game:GetService("Players")
@@ -9,7 +9,7 @@ local LP = Players.LocalPlayer
 local Mouse = LP:GetMouse()
 
 -- ====================================================================
--- HIDDEN STATE (tidak terekspos ke global)
+-- HIDDEN STATE
 -- ====================================================================
 local _ = {}
 _.active = false
@@ -24,7 +24,7 @@ _.defCfg = {
 for k, v in pairs(_.defCfg) do _.cfg[k] = v end
 
 -- ====================================================================
--- RANDOM DELAY (distribusi normal)
+-- RANDOM DELAY
 -- ====================================================================
 local function randDelay(mean, variance)
     local u1, u2 = math.random(), math.random()
@@ -56,7 +56,7 @@ end
 loadCfg()
 
 -- ====================================================================
--- LOCATIONS (sama seperti sebelumnya)
+-- LOCATIONS
 -- ====================================================================
 local locs = {
     Spawn = CFrame.new(45.2788086, 252.562927, 2987.10913, 1, 0, 0, 0, 1, 0, 0, 1),
@@ -215,7 +215,7 @@ local function reel()
     pcall(function() ev.fish:FireServer() end)
 end
 
--- Main loop (tersembunyi)
+-- Main loop
 local fishingState = { _.active, false }
 coroutine.wrap(function()
     while true do
@@ -265,10 +265,10 @@ task.spawn(function()
 end)
 
 -- ====================================================================
--- UI MANUAL (Tanpa Rayfield)
+-- UI MANUAL (Fixed: no BlurEffect, no UIStroke)
 -- ====================================================================
 local gui = Instance.new("ScreenGui")
-gui.Name = "KS"  -- nama pendek tidak mencurigakan
+gui.Name = "KS"
 gui.ResetOnSpawn = false
 gui.Parent = game.CoreGui
 
@@ -284,17 +284,6 @@ frame.ClipsDescendants = true
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = frame
-
-local shadow = Instance.new("UIStroke")
-shadow.Color = Color3.fromRGB(255, 255, 255)
-shadow.Transparency = 0.9
-shadow.Thickness = 1
-shadow.Parent = frame
-
--- Blur effect
-local blur = Instance.new("BlurEffect")
-blur.Size = 8
-blur.Parent = frame
 
 -- Title bar (draggable)
 local titleBar = Instance.new("Frame")
@@ -399,12 +388,14 @@ afBtn.MouseButton1Click:Connect(function()
     _.active = _.cfg.af
     afBtn.Text = _.cfg.af and "▶ Auto Fish: ON" or "⏸ Auto Fish: OFF"
     afBtn.BackgroundColor3 = _.cfg.af and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
-    statusLabel.Text = _.cfg.af and "● Fishing..." or "● Idle"
-    statusLabel.TextColor3 = _.cfg.af and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(150, 150, 150)
+    if statusLabel then
+        statusLabel.Text = _.cfg.af and "● Fishing..." or "● Idle"
+        statusLabel.TextColor3 = _.cfg.af and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(150, 150, 150)
+    end
     saveCfg()
 end)
 
--- Auto Catch toggle (risky)
+-- Auto Catch toggle
 local acBtn = Instance.new("TextButton")
 acBtn.Size = UDim2.new(1, 0, 0, 45)
 acBtn.Position = UDim2.new(0, 0, 0, 55)
@@ -427,7 +418,7 @@ acBtn.MouseButton1Click:Connect(function()
     saveCfg()
 end)
 
--- Fish Delay input
+-- Fish Delay
 local fdLabel = Instance.new("TextLabel")
 fdLabel.Size = UDim2.new(0.5, -5, 0, 30)
 fdLabel.Position = UDim2.new(0, 0, 0, 110)
@@ -465,7 +456,7 @@ fdInput.FocusLost:Connect(function()
     end
 end)
 
--- Catch Delay input
+-- Catch Delay
 local cdLabel = Instance.new("TextLabel")
 cdLabel.Size = UDim2.new(0.5, -5, 0, 30)
 cdLabel.Position = UDim2.new(0, 0, 0, 145)
@@ -533,7 +524,7 @@ asBtn.MouseButton1Click:Connect(function()
     saveCfg()
 end)
 
--- Sell Delay input
+-- Sell Delay
 local sdLabel = Instance.new("TextLabel")
 sdLabel.Size = UDim2.new(0.5, -5, 0, 30)
 sdLabel.Position = UDim2.new(0, 0, 0, 255)
@@ -595,7 +586,7 @@ sellBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Status
+-- Status label
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, 0, 0, 30)
 statusLabel.Position = UDim2.new(0, 0, 0, 345)
@@ -787,7 +778,7 @@ warning.TextXAlignment = Enum.TextXAlignment.Left
 warning.Font = Enum.Font.Gotham
 warning.Parent = t4
 
--- Watermark (tanpa nama library)
+-- Watermark
 local watermark = Instance.new("TextLabel")
 watermark.Size = UDim2.new(1, 0, 0, 20)
 watermark.Position = UDim2.new(0, 0, 1, -25)
