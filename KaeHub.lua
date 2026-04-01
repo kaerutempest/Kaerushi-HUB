@@ -1,20 +1,18 @@
--- KaeruShi HUB v0.3 | Manual UI Edition (Fixed)
--- Anti-Cheat Optimized | No Rayfield
+-- KaeruShi HUB v0.3 | Fully Integrated
+-- All features from original script + Manual UI (No Rayfield)
 
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local HS = game:GetService("HttpService")
 local UIS = game:GetService("UserInputService")
 local LP = Players.LocalPlayer
-local Mouse = LP:GetMouse()
 
 -- ====================================================================
--- HIDDEN STATE
+-- HIDDEN STATE & CONFIG
 -- ====================================================================
 local _ = {}
 _.active = false
 _.casting = false
-_.currentTab = 1
 _.cfg = {}
 _.defCfg = {
     af = false, as = false, ac = false, gpu = false,
@@ -23,18 +21,14 @@ _.defCfg = {
 }
 for k, v in pairs(_.defCfg) do _.cfg[k] = v end
 
--- ====================================================================
--- RANDOM DELAY
--- ====================================================================
+-- Helper: random delay (distribusi normal)
 local function randDelay(mean, variance)
     local u1, u2 = math.random(), math.random()
     local z0 = math.sqrt(-2 * math.log(u1)) * math.cos(2 * math.pi * u2)
     return math.max(0.05, mean + (variance * z0))
 end
 
--- ====================================================================
--- CONFIG SAVE/LOAD
--- ====================================================================
+-- Config save/load
 local cfgFolder = "KaeruShiData"
 local cfgFile = cfgFolder .. "/cfg_" .. LP.UserId .. ".json"
 local function ensureFolder()
@@ -56,7 +50,7 @@ end
 loadCfg()
 
 -- ====================================================================
--- LOCATIONS
+-- LOCATIONS (Teleport)
 -- ====================================================================
 local locs = {
     Spawn = CFrame.new(45.2788086, 252.562927, 2987.10913, 1, 0, 0, 0, 1, 0, 0, 1),
@@ -130,7 +124,7 @@ local function gpuOff()
 end
 
 -- ====================================================================
--- NETWORK EVENTS
+-- NETWORK EVENTS & FAVORITE MODULES (dari script asli)
 -- ====================================================================
 local function getRemotes()
     local net = RS.Packages._Index["sleitnick_net@0.2.0"].net
@@ -146,9 +140,6 @@ local function getRemotes()
 end
 local ev = getRemotes()
 
--- ====================================================================
--- FAVORITE MODULES
--- ====================================================================
 local ItemUtility = require(RS.Shared.ItemUtility)
 local Replion = require(RS.Packages.Replion)
 local PlayerData = Replion.Client:WaitReplion("Data")
@@ -190,7 +181,7 @@ end
 task.spawn(function() while task.wait(randDelay(10, 3)) do if _.cfg.afav then autoFav() end end end)
 
 -- ====================================================================
--- FISHING CORE
+-- FISHING CORE (dari script asli)
 -- ====================================================================
 local function equipRod()
     local c = LP.Character
@@ -215,7 +206,6 @@ local function reel()
     pcall(function() ev.fish:FireServer() end)
 end
 
--- Main loop
 local fishingState = { _.active, false }
 coroutine.wrap(function()
     while true do
@@ -254,7 +244,7 @@ task.spawn(function()
     end
 end)
 
--- Anti-AFK
+-- Anti-AFK (dengan gerakan mouse halus)
 task.spawn(function()
     while _.active do
         task.wait(randDelay(45, 15))
@@ -265,34 +255,30 @@ task.spawn(function()
 end)
 
 -- ====================================================================
--- UI MANUAL (Fixed: no BlurEffect, no UIStroke)
+-- UI MANUAL (tanpa Rayfield, semua fitur terhubung)
 -- ====================================================================
 local gui = Instance.new("ScreenGui")
-gui.Name = "KS"
+gui.Name = "KaeruShi"
 gui.ResetOnSpawn = false
 gui.Parent = game.CoreGui
 
--- Main frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 360, 0, 540)
-frame.Position = UDim2.new(0.5, -180, 0.5, -270)
+frame.Size = UDim2.new(0, 380, 0, 520)
+frame.Position = UDim2.new(0.5, -190, 0.5, -260)
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-frame.BackgroundTransparency = 0.15
+frame.BackgroundTransparency = 0.1
 frame.BorderSizePixel = 0
 frame.ClipsDescendants = true
-
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = frame
 
--- Title bar (draggable)
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 40)
 titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-titleBar.BackgroundTransparency = 0.3
+titleBar.BackgroundTransparency = 0.2
 titleBar.BorderSizePixel = 0
 titleBar.Parent = frame
-
 local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 12)
 titleCorner.Parent = titleBar
@@ -301,7 +287,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -40, 1, 0)
 title.Position = UDim2.new(0, 20, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "⚡ KaeruShi HUB"
+title.Text = "KaeruShi HUB"
 title.TextColor3 = Color3.fromRGB(0, 150, 255)
 title.TextSize = 18
 title.TextXAlignment = Enum.TextXAlignment.Left
@@ -320,11 +306,10 @@ subtitle.Font = Enum.Font.Gotham
 subtitle.Parent = titleBar
 
 -- Tab buttons
-local tabs = {"🎣 Fishing", "🌍 Teleport", "⚙️ Settings", "ℹ️ Info"}
+local tabNames = {"Fishing", "Teleport", "Settings", "Info"}
 local tabButtons = {}
-local tabFrames = {}
-
-for i, name in ipairs(tabs) do
+local tabContents = {}
+for i, name in ipairs(tabNames) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.25, 0, 0, 35)
     btn.Position = UDim2.new((i-1)*0.25, 0, 0, 45)
@@ -336,89 +321,61 @@ for i, name in ipairs(tabs) do
     btn.Font = Enum.Font.GothamSemibold
     btn.BorderSizePixel = 0
     btn.Parent = frame
-    
     local btnCorner = Instance.new("UICorner")
     btnCorner.CornerRadius = UDim.new(0, 6)
     btnCorner.Parent = btn
-    
     tabButtons[i] = btn
     
-    -- Tab content frame
-    local tabFrame = Instance.new("Frame")
-    tabFrame.Size = UDim2.new(1, -20, 1, -90)
-    tabFrame.Position = UDim2.new(0, 10, 0, 85)
-    tabFrame.BackgroundTransparency = 1
-    tabFrame.Visible = i == 1
-    tabFrame.Parent = frame
-    tabFrames[i] = tabFrame
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, -20, 1, -90)
+    content.Position = UDim2.new(0, 10, 0, 85)
+    content.BackgroundTransparency = 1
+    content.Visible = i == 1
+    content.Parent = frame
+    tabContents[i] = content
     
     btn.MouseButton1Click:Connect(function()
         for j, tb in ipairs(tabButtons) do
             tb.BackgroundColor3 = j == i and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(35, 35, 45)
             tb.BackgroundTransparency = j == i and 0.2 or 0.5
         end
-        for j, tf in ipairs(tabFrames) do
-            tf.Visible = j == i
+        for j, ct in ipairs(tabContents) do
+            ct.Visible = j == i
         end
-        _.currentTab = i
     end)
 end
 
 -- ========== TAB 1: FISHING ==========
-local t1 = tabFrames[1]
+local t1 = tabContents[1]
 
--- Auto Fish toggle
 local afBtn = Instance.new("TextButton")
 afBtn.Size = UDim2.new(1, 0, 0, 45)
 afBtn.Position = UDim2.new(0, 0, 0, 0)
 afBtn.BackgroundColor3 = _.cfg.af and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
-afBtn.Text = _.cfg.af and "▶ Auto Fish: ON" or "⏸ Auto Fish: OFF"
+afBtn.Text = _.cfg.af and "▶ Auto Fish: ON" or "▶ Auto Fish: OFF"
 afBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 afBtn.TextSize = 14
 afBtn.Font = Enum.Font.GothamSemibold
 afBtn.BorderSizePixel = 0
-
 local afCorner = Instance.new("UICorner")
 afCorner.CornerRadius = UDim.new(0, 8)
 afCorner.Parent = afBtn
 afBtn.Parent = t1
 
-afBtn.MouseButton1Click:Connect(function()
-    _.cfg.af = not _.cfg.af
-    _.active = _.cfg.af
-    afBtn.Text = _.cfg.af and "▶ Auto Fish: ON" or "⏸ Auto Fish: OFF"
-    afBtn.BackgroundColor3 = _.cfg.af and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
-    if statusLabel then
-        statusLabel.Text = _.cfg.af and "● Fishing..." or "● Idle"
-        statusLabel.TextColor3 = _.cfg.af and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(150, 150, 150)
-    end
-    saveCfg()
-end)
-
--- Auto Catch toggle
 local acBtn = Instance.new("TextButton")
 acBtn.Size = UDim2.new(1, 0, 0, 45)
 acBtn.Position = UDim2.new(0, 0, 0, 55)
 acBtn.BackgroundColor3 = _.cfg.ac and Color3.fromRGB(200, 100, 0) or Color3.fromRGB(45, 45, 55)
-acBtn.Text = _.cfg.ac and "⚠️ Auto Catch: ON (RISK)" or "🎯 Auto Catch: OFF"
+acBtn.Text = _.cfg.ac and "⚠️ Auto Catch: ON" or "🎯 Auto Catch: OFF"
 acBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 acBtn.TextSize = 14
 acBtn.Font = Enum.Font.GothamSemibold
 acBtn.BorderSizePixel = 0
-
 local acCorner = Instance.new("UICorner")
 acCorner.CornerRadius = UDim.new(0, 8)
 acCorner.Parent = acBtn
 acBtn.Parent = t1
 
-acBtn.MouseButton1Click:Connect(function()
-    _.cfg.ac = not _.cfg.ac
-    acBtn.Text = _.cfg.ac and "⚠️ Auto Catch: ON (RISK)" or "🎯 Auto Catch: OFF"
-    acBtn.BackgroundColor3 = _.cfg.ac and Color3.fromRGB(200, 100, 0) or Color3.fromRGB(45, 45, 55)
-    saveCfg()
-end)
-
--- Fish Delay
 local fdLabel = Instance.new("TextLabel")
 fdLabel.Size = UDim2.new(0.5, -5, 0, 30)
 fdLabel.Position = UDim2.new(0, 0, 0, 110)
@@ -438,25 +395,11 @@ fdInput.Text = tostring(_.cfg.fd)
 fdInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 fdInput.TextSize = 12
 fdInput.Font = Enum.Font.Gotham
-fdInput.PlaceholderText = "1.2"
 fdInput.Parent = t1
-
 local fdCorner = Instance.new("UICorner")
 fdCorner.CornerRadius = UDim.new(0, 6)
 fdCorner.Parent = fdInput
 
-fdInput.FocusLost:Connect(function()
-    local n = tonumber(fdInput.Text)
-    if n and n >= 0.8 and n <= 5 then
-        _.cfg.fd = n
-        fdLabel.Text = "Fish Delay: " .. n .. "s"
-        saveCfg()
-    else
-        fdInput.Text = tostring(_.cfg.fd)
-    end
-end)
-
--- Catch Delay
 local cdLabel = Instance.new("TextLabel")
 cdLabel.Size = UDim2.new(0.5, -5, 0, 30)
 cdLabel.Position = UDim2.new(0, 0, 0, 145)
@@ -477,23 +420,10 @@ cdInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 cdInput.TextSize = 12
 cdInput.Font = Enum.Font.Gotham
 cdInput.Parent = t1
-
 local cdCorner = Instance.new("UICorner")
 cdCorner.CornerRadius = UDim.new(0, 6)
 cdCorner.Parent = cdInput
 
-cdInput.FocusLost:Connect(function()
-    local n = tonumber(cdInput.Text)
-    if n and n >= 0.2 and n <= 2 then
-        _.cfg.cd = n
-        cdLabel.Text = "Catch Delay: " .. n .. "s"
-        saveCfg()
-    else
-        cdInput.Text = tostring(_.cfg.cd)
-    end
-end)
-
--- Separator
 local sep = Instance.new("Frame")
 sep.Size = UDim2.new(1, 0, 0, 1)
 sep.Position = UDim2.new(0, 0, 0, 190)
@@ -501,7 +431,6 @@ sep.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
 sep.BackgroundTransparency = 0.5
 sep.Parent = t1
 
--- Auto Sell toggle
 local asBtn = Instance.new("TextButton")
 asBtn.Size = UDim2.new(1, 0, 0, 45)
 asBtn.Position = UDim2.new(0, 0, 0, 200)
@@ -511,20 +440,11 @@ asBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 asBtn.TextSize = 14
 asBtn.Font = Enum.Font.GothamSemibold
 asBtn.BorderSizePixel = 0
-
 local asCorner = Instance.new("UICorner")
 asCorner.CornerRadius = UDim.new(0, 8)
 asCorner.Parent = asBtn
 asBtn.Parent = t1
 
-asBtn.MouseButton1Click:Connect(function()
-    _.cfg.as = not _.cfg.as
-    asBtn.Text = _.cfg.as and "💰 Auto Sell: ON" or "💰 Auto Sell: OFF"
-    asBtn.BackgroundColor3 = _.cfg.as and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
-    saveCfg()
-end)
-
--- Sell Delay
 local sdLabel = Instance.new("TextLabel")
 sdLabel.Size = UDim2.new(0.5, -5, 0, 30)
 sdLabel.Position = UDim2.new(0, 0, 0, 255)
@@ -545,10 +465,80 @@ sdInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 sdInput.TextSize = 12
 sdInput.Font = Enum.Font.Gotham
 sdInput.Parent = t1
-
 local sdCorner = Instance.new("UICorner")
 sdCorner.CornerRadius = UDim.new(0, 6)
 sdCorner.Parent = sdInput
+
+local sellBtn = Instance.new("TextButton")
+sellBtn.Size = UDim2.new(1, 0, 0, 40)
+sellBtn.Position = UDim2.new(0, 0, 0, 295)
+sellBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 60)
+sellBtn.Text = "💰 Sell All Now"
+sellBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+sellBtn.TextSize = 14
+sellBtn.Font = Enum.Font.GothamSemibold
+sellBtn.BorderSizePixel = 0
+local sellCorner = Instance.new("UICorner")
+sellCorner.CornerRadius = UDim.new(0, 8)
+sellCorner.Parent = sellBtn
+sellBtn.Parent = t1
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0, 30)
+statusLabel.Position = UDim2.new(0, 0, 0, 345)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = _.active and "● Fishing..." or "● Idle"
+statusLabel.TextColor3 = _.active and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(150, 150, 150)
+statusLabel.TextSize = 11
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Parent = t1
+
+-- Hubungkan event
+afBtn.MouseButton1Click:Connect(function()
+    _.cfg.af = not _.cfg.af
+    _.active = _.cfg.af
+    afBtn.Text = _.cfg.af and "▶ Auto Fish: ON" or "▶ Auto Fish: OFF"
+    afBtn.BackgroundColor3 = _.cfg.af and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+    statusLabel.Text = _.cfg.af and "● Fishing..." or "● Idle"
+    statusLabel.TextColor3 = _.cfg.af and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(150, 150, 150)
+    saveCfg()
+end)
+
+acBtn.MouseButton1Click:Connect(function()
+    _.cfg.ac = not _.cfg.ac
+    acBtn.Text = _.cfg.ac and "⚠️ Auto Catch: ON" or "🎯 Auto Catch: OFF"
+    acBtn.BackgroundColor3 = _.cfg.ac and Color3.fromRGB(200, 100, 0) or Color3.fromRGB(45, 45, 55)
+    saveCfg()
+end)
+
+fdInput.FocusLost:Connect(function()
+    local n = tonumber(fdInput.Text)
+    if n and n >= 0.8 and n <= 5 then
+        _.cfg.fd = n
+        fdLabel.Text = "Fish Delay: " .. n .. "s"
+        saveCfg()
+    else
+        fdInput.Text = tostring(_.cfg.fd)
+    end
+end)
+
+cdInput.FocusLost:Connect(function()
+    local n = tonumber(cdInput.Text)
+    if n and n >= 0.2 and n <= 2 then
+        _.cfg.cd = n
+        cdLabel.Text = "Catch Delay: " .. n .. "s"
+        saveCfg()
+    else
+        cdInput.Text = tostring(_.cfg.cd)
+    end
+end)
+
+asBtn.MouseButton1Click:Connect(function()
+    _.cfg.as = not _.cfg.as
+    asBtn.Text = _.cfg.as and "💰 Auto Sell: ON" or "💰 Auto Sell: OFF"
+    asBtn.BackgroundColor3 = _.cfg.as and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+    saveCfg()
+end)
 
 sdInput.FocusLost:Connect(function()
     local n = tonumber(sdInput.Text)
@@ -561,22 +551,6 @@ sdInput.FocusLost:Connect(function()
     end
 end)
 
--- Sell Now button
-local sellBtn = Instance.new("TextButton")
-sellBtn.Size = UDim2.new(1, 0, 0, 40)
-sellBtn.Position = UDim2.new(0, 0, 0, 295)
-sellBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 60)
-sellBtn.Text = "💰 Sell All Now"
-sellBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-sellBtn.TextSize = 14
-sellBtn.Font = Enum.Font.GothamSemibold
-sellBtn.BorderSizePixel = 0
-
-local sellCorner = Instance.new("UICorner")
-sellCorner.CornerRadius = UDim.new(0, 8)
-sellCorner.Parent = sellBtn
-sellBtn.Parent = t1
-
 sellBtn.MouseButton1Click:Connect(function()
     sellBtn.Text = "⏳ Selling..."
     task.spawn(function()
@@ -586,33 +560,21 @@ sellBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Status label
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, 0, 0, 30)
-statusLabel.Position = UDim2.new(0, 0, 0, 345)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Text = _.active and "● Fishing..." or "● Idle"
-statusLabel.TextColor3 = _.active and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(150, 150, 150)
-statusLabel.TextSize = 11
-statusLabel.Font = Enum.Font.Gotham
-statusLabel.Parent = t1
-
 -- ========== TAB 2: TELEPORT ==========
-local t2 = tabFrames[2]
-
+local t2 = tabContents[2]
 local scroll = Instance.new("ScrollingFrame")
 scroll.Size = UDim2.new(1, 0, 1, 0)
 scroll.Position = UDim2.new(0, 0, 0, 0)
 scroll.BackgroundTransparency = 1
-scroll.CanvasSize = UDim2.new(0, 0, 0, #locs * 40)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.ScrollBarThickness = 4
 scroll.Parent = t2
 
-local yPos = 0
+local y = 0
 for name, _ in pairs(locs) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, 35)
-    btn.Position = UDim2.new(0, 0, 0, yPos)
+    btn.Position = UDim2.new(0, 0, 0, y)
     btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     btn.Text = "📍 " .. name
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -621,19 +583,17 @@ for name, _ in pairs(locs) do
     btn.Font = Enum.Font.Gotham
     btn.BorderSizePixel = 0
     btn.Parent = scroll
-    
     local btnCorner = Instance.new("UICorner")
     btnCorner.CornerRadius = UDim.new(0, 6)
     btnCorner.Parent = btn
-    
     btn.MouseButton1Click:Connect(function() tp(name) end)
-    yPos = yPos + 40
+    y = y + 40
 end
+scroll.CanvasSize = UDim2.new(0, 0, 0, y)
 
 -- ========== TAB 3: SETTINGS ==========
-local t3 = tabFrames[3]
+local t3 = tabContents[3]
 
--- GPU Saver toggle
 local gpuBtn = Instance.new("TextButton")
 gpuBtn.Size = UDim2.new(1, 0, 0, 45)
 gpuBtn.Position = UDim2.new(0, 0, 0, 0)
@@ -643,21 +603,11 @@ gpuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 gpuBtn.TextSize = 14
 gpuBtn.Font = Enum.Font.GothamSemibold
 gpuBtn.BorderSizePixel = 0
-
 local gpuCorner = Instance.new("UICorner")
 gpuCorner.CornerRadius = UDim.new(0, 8)
 gpuCorner.Parent = gpuBtn
 gpuBtn.Parent = t3
 
-gpuBtn.MouseButton1Click:Connect(function()
-    _.cfg.gpu = not _.cfg.gpu
-    gpuBtn.Text = _.cfg.gpu and "💻 GPU Saver: ON" or "💻 GPU Saver: OFF"
-    gpuBtn.BackgroundColor3 = _.cfg.gpu and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
-    if _.cfg.gpu then gpuOn() else gpuOff() end
-    saveCfg()
-end)
-
--- Auto Favorite toggle
 local favBtn = Instance.new("TextButton")
 favBtn.Size = UDim2.new(1, 0, 0, 45)
 favBtn.Position = UDim2.new(0, 0, 0, 55)
@@ -667,20 +617,11 @@ favBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 favBtn.TextSize = 14
 favBtn.Font = Enum.Font.GothamSemibold
 favBtn.BorderSizePixel = 0
-
 local favCorner = Instance.new("UICorner")
 favCorner.CornerRadius = UDim.new(0, 8)
 favCorner.Parent = favBtn
 favBtn.Parent = t3
 
-favBtn.MouseButton1Click:Connect(function()
-    _.cfg.afav = not _.cfg.afav
-    favBtn.Text = _.cfg.afav and "⭐ Auto Favorite: ON" or "⭐ Auto Favorite: OFF"
-    favBtn.BackgroundColor3 = _.cfg.afav and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
-    saveCfg()
-end)
-
--- Favorite Rarity dropdown
 local favLabel = Instance.new("TextLabel")
 favLabel.Size = UDim2.new(1, 0, 0, 30)
 favLabel.Position = UDim2.new(0, 0, 0, 110)
@@ -701,23 +642,10 @@ favRarityBtn.TextSize = 13
 favRarityBtn.Font = Enum.Font.GothamSemibold
 favRarityBtn.BorderSizePixel = 0
 favRarityBtn.Parent = t3
-
 local favRarityCorner = Instance.new("UICorner")
 favRarityCorner.CornerRadius = UDim.new(0, 8)
 favRarityCorner.Parent = favRarityBtn
 
-local rarityOptions = {"Mythic", "Secret"}
-local rarityIndex = rarityOptions[1] == _.cfg.favR and 1 or 2
-favRarityBtn.MouseButton1Click:Connect(function()
-    rarityIndex = rarityIndex % 2 + 1
-    local newRarity = rarityOptions[rarityIndex]
-    _.cfg.favR = newRarity
-    favLabel.Text = "Favorite Rarity: " .. newRarity
-    favRarityBtn.Text = newRarity
-    saveCfg()
-end)
-
--- Favorite Now button
 local favNowBtn = Instance.new("TextButton")
 favNowBtn.Size = UDim2.new(1, 0, 0, 40)
 favNowBtn.Position = UDim2.new(0, 0, 0, 195)
@@ -727,11 +655,35 @@ favNowBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 favNowBtn.TextSize = 14
 favNowBtn.Font = Enum.Font.GothamSemibold
 favNowBtn.BorderSizePixel = 0
-
 local favNowCorner = Instance.new("UICorner")
 favNowCorner.CornerRadius = UDim.new(0, 8)
 favNowCorner.Parent = favNowBtn
 favNowBtn.Parent = t3
+
+gpuBtn.MouseButton1Click:Connect(function()
+    _.cfg.gpu = not _.cfg.gpu
+    gpuBtn.Text = _.cfg.gpu and "💻 GPU Saver: ON" or "💻 GPU Saver: OFF"
+    gpuBtn.BackgroundColor3 = _.cfg.gpu and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+    if _.cfg.gpu then gpuOn() else gpuOff() end
+    saveCfg()
+end)
+
+favBtn.MouseButton1Click:Connect(function()
+    _.cfg.afav = not _.cfg.afav
+    favBtn.Text = _.cfg.afav and "⭐ Auto Favorite: ON" or "⭐ Auto Favorite: OFF"
+    favBtn.BackgroundColor3 = _.cfg.afav and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+    saveCfg()
+end)
+
+local rarityOptions = {"Mythic", "Secret"}
+local rarityIndex = rarityOptions[1] == _.cfg.favR and 1 or 2
+favRarityBtn.MouseButton1Click:Connect(function()
+    rarityIndex = rarityIndex % 2 + 1
+    _.cfg.favR = rarityOptions[rarityIndex]
+    favLabel.Text = "Favorite Rarity: " .. _.cfg.favR
+    favRarityBtn.Text = _.cfg.favR
+    saveCfg()
+end)
 
 favNowBtn.MouseButton1Click:Connect(function()
     favNowBtn.Text = "⏳ Processing..."
@@ -743,7 +695,7 @@ favNowBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ========== TAB 4: INFO ==========
-local t4 = tabFrames[4]
+local t4 = tabContents[4]
 
 local infoTitle = Instance.new("TextLabel")
 infoTitle.Size = UDim2.new(1, 0, 0, 35)
@@ -783,7 +735,7 @@ local watermark = Instance.new("TextLabel")
 watermark.Size = UDim2.new(1, 0, 0, 20)
 watermark.Position = UDim2.new(0, 0, 1, -25)
 watermark.BackgroundTransparency = 1
-watermark.Text = "KS | v0.3"
+watermark.Text = "KaeruShi | v0.3"
 watermark.TextColor3 = Color3.fromRGB(100, 100, 120)
 watermark.TextSize = 10
 watermark.Font = Enum.Font.Gotham
@@ -792,7 +744,6 @@ watermark.Parent = frame
 -- Drag functionality
 local dragging = false
 local dragStart, startPos
-
 titleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
@@ -805,7 +756,6 @@ titleBar.InputBegan:Connect(function(input)
         end)
     end
 end)
-
 UIS.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         local delta = input.Position - dragStart
@@ -823,4 +773,4 @@ end)
 
 frame.Parent = gui
 
-print("KaeruShi HUB v0.3 | Manual UI | Ready")
+print("KaeruShi HUB v0.3 | Fully integrated | Ready")
