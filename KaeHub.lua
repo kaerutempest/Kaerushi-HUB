@@ -1,102 +1,65 @@
--- ====================================================================
--- KaeruShi HUBFISH | V0.2 | Tablet Edition
--- UI: Rayfield | Anti-Detection Enhanced
--- ====================================================================
+-- KaeruShi HUB v0.3 | Manual UI Edition
+-- Anti-Cheat Optimized | No Rayfield
 
--- ====== CRITICAL DEPENDENCY VALIDATION ======
-local success, errorMsg = pcall(function()
-    local services = {
-        game = game,
-        workspace = workspace,
-        Players = game:GetService("Players"),
-        RunService = game:GetService("RunService"),
-        ReplicatedStorage = game:GetService("ReplicatedStorage"),
-        HttpService = game:GetService("HttpService")
-    }
-    for serviceName, service in pairs(services) do
-        if not service then error("Critical service missing: " .. serviceName) end
-    end
-    local LocalPlayer = game:GetService("Players").LocalPlayer
-    if not LocalPlayer then error("LocalPlayer not available") end
-    return true
-end)
-if not success then
-    error("❌ Critical dependency check failed: " .. tostring(errorMsg))
-    return
-end
-
--- ====================================================================
--- CORE SERVICES
--- ====================================================================
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local VirtualUser = game:GetService("VirtualUser")
-local LocalPlayer = Players.LocalPlayer
+local RS = game:GetService("ReplicatedStorage")
+local HS = game:GetService("HttpService")
+local UIS = game:GetService("UserInputService")
+local LP = Players.LocalPlayer
+local Mouse = LP:GetMouse()
 
 -- ====================================================================
--- ENHANCED ANTI-CHEAT (block kick, crash, and hide script)
+-- HIDDEN STATE (tidak terekspos ke global)
 -- ====================================================================
-local function AntiCheatFix()
-    -- Block kick
-    local player = LocalPlayer
-    if player and player.Kick then
-        local oldKick = player.Kick
-        player.Kick = function(self, ...)
-            print("[AC] Kick blocked")
-            fishingActive = false
-            return nil
-        end
-    end
-    -- Block crash
-    if game.Crash then game.Crash = function() end end
-    -- Hide from detection (experimental)
-    if debug and debug.setupvalue then
-        local gc = getgc and getgc(true) or {}
-        for _, v in ipairs(gc) do
-            if type(v) == "function" then
-                local info = debug.getinfo(v)
-                if info and info.name and info.name:lower():match("detect") then
-                    debug.setupvalue(v, 1, function() end)
-                end
-            end
-        end
-    end
-    print("[AC] Enhanced protection loaded")
-end
-pcall(AntiCheatFix)
-
--- ====================================================================
--- HELPER: RANDOM DELAY (human-like variation)
--- ====================================================================
-local function randomDelay(base, variance)
-    return base + (math.random() * variance * 2 - variance)
-end
-
--- ====================================================================
--- CONFIGURATION
--- ====================================================================
-local CONFIG_FOLDER = "KaeruShiConfig"
-local CONFIG_FILE = CONFIG_FOLDER .. "/config_" .. LocalPlayer.UserId .. ".json"
-local DefaultConfig = {
-    AutoFish = false,
-    AutoSell = false,
-    AutoCatch = false,     -- WARNING: high risk of detection
-    GPUSaver = false,
-    FishDelay = 1.2,
-    CatchDelay = 0.4,
-    SellDelay = 45,
-    TeleportLocation = "Sisyphus Statue",
-    AutoFavorite = true,
-    FavoriteRarity = "Mythic"
+local _ = {}
+_.active = false
+_.casting = false
+_.currentTab = 1
+_.cfg = {}
+_.defCfg = {
+    af = false, as = false, ac = false, gpu = false,
+    fd = 1.2, cd = 0.4, sd = 45, loc = "Sisyphus Statue",
+    afav = true, favR = "Mythic"
 }
-local Config = {}
-for k, v in pairs(DefaultConfig) do Config[k] = v end
+for k, v in pairs(_.defCfg) do _.cfg[k] = v end
 
--- Teleport Locations (unchanged)
-local LOCATIONS = {
-    ["Spawn"] = CFrame.new(45.2788086, 252.562927, 2987.10913, 1, 0, 0, 0, 1, 0, 0, 1),
+-- ====================================================================
+-- RANDOM DELAY (distribusi normal)
+-- ====================================================================
+local function randDelay(mean, variance)
+    local u1, u2 = math.random(), math.random()
+    local z0 = math.sqrt(-2 * math.log(u1)) * math.cos(2 * math.pi * u2)
+    return math.max(0.05, mean + (variance * z0))
+end
+
+-- ====================================================================
+-- CONFIG SAVE/LOAD
+-- ====================================================================
+local cfgFolder = "KaeruShiData"
+local cfgFile = cfgFolder .. "/cfg_" .. LP.UserId .. ".json"
+local function ensureFolder()
+    if not isfolder then return false end
+    if not isfolder(cfgFolder) then pcall(function() makefolder(cfgFolder) end) end
+    return isfolder(cfgFolder)
+end
+local function saveCfg()
+    if not writefile or not ensureFolder() then return end
+    pcall(function() writefile(cfgFile, HS:JSONEncode(_.cfg)) end)
+end
+local function loadCfg()
+    if not readfile or not isfile or not isfile(cfgFile) then return end
+    pcall(function()
+        local d = HS:JSONDecode(readfile(cfgFile))
+        for k, v in pairs(d) do if _.defCfg[k] == nil then _.cfg[k] = v end end
+    end)
+end
+loadCfg()
+
+-- ====================================================================
+-- LOCATIONS (sama seperti sebelumnya)
+-- ====================================================================
+local locs = {
+    Spawn = CFrame.new(45.2788086, 252.562927, 2987.10913, 1, 0, 0, 0, 1, 0, 0, 1),
     ["Sisyphus Statue"] = CFrame.new(-3728.21606, -135.074417, -1012.12744, -0.977224171, 7.74980258e-09, -0.212209702, 1.566994e-08, 1, -3.5640408e-08, 0.212209702, -3.81539813e-08, -0.977224171),
     ["Coral Reefs"] = CFrame.new(-3114.78198, 1.32066584, 2237.52295, -0.304758579, 1.6556676e-08, -0.952429652, -8.50574935e-08, 1, 4.46003305e-08, 0.952429652, 9.46036067e-08, -0.304758579),
     ["Esoteric Depths"] = CFrame.new(3248.37109, -1301.53027, 1403.82727, -0.920208454, 7.76270355e-08, 0.391428679, 4.56261056e-08, 1, -9.10549289e-08, -0.391428679, -6.5930152e-08, -0.920208454),
@@ -111,72 +74,22 @@ local LOCATIONS = {
     ["Ancient Jungle"] = CFrame.new(1831.71362, 6.62499952, -299.279175, 0.213522509, 1.25553285e-07, -0.976938128, -4.32026184e-08, 1, 1.19074642e-07, 0.976938128, 1.67811702e-08, 0.213522509),
     ["Sacred Temple"] = CFrame.new(1466.92151, -21.8750591, -622.835693, -0.764787138, 8.14444334e-09, 0.644283056, 2.31097452e-08, 1, 1.4791004e-08, -0.644283056, 2.6201187e-08, -0.764787138)
 }
-
--- Config functions (save/load)
-local function ensureFolder()
-    if not isfolder or not makefolder then return false end
-    if not isfolder(CONFIG_FOLDER) then pcall(function() makefolder(CONFIG_FOLDER) end) end
-    return isfolder(CONFIG_FOLDER)
-end
-local function saveConfig()
-    if not writefile or not ensureFolder() then return end
-    pcall(function() writefile(CONFIG_FILE, HttpService:JSONEncode(Config)) print("[Config] Saved") end)
-end
-local function loadConfig()
-    if not readfile or not isfile or not isfile(CONFIG_FILE) then return end
+local function tp(n)
+    local cf = locs[n]
+    if not cf then return end
     pcall(function()
-        local data = HttpService:JSONDecode(readfile(CONFIG_FILE))
-        for k, v in pairs(data) do if DefaultConfig[k] == nil then Config[k] = v end end
-        print("[Config] Loaded")
-    end)
-end
-loadConfig()
-
--- ====================================================================
--- NETWORK EVENTS (verified from game)
--- ====================================================================
-local function getNetworkEvents()
-    local net = ReplicatedStorage.Packages._Index["sleitnick_net@0.2.0"].net
-    return {
-        fishing = net:WaitForChild("RE/FishingCompleted"),
-        sell = net:WaitForChild("RF/SellAllItems"),
-        charge = net:WaitForChild("RF/ChargeFishingRod"),
-        minigame = net:WaitForChild("RF/RequestFishingMinigameStarted"),
-        equip = net:WaitForChild("RE/EquipToolFromHotbar"),
-        unequip = net:WaitForChild("RE/UnequipToolFromHotbar"),
-        favorite = net:WaitForChild("RE/FavoriteItem")
-    }
-end
-local Events = getNetworkEvents()
-
--- Modules for favorite
-local ItemUtility = require(ReplicatedStorage.Shared.ItemUtility)
-local Replion = require(ReplicatedStorage.Packages.Replion)
-local PlayerData = Replion.Client:WaitReplion("Data")
-
--- Rarity system
-local RarityTiers = { Common=1, Uncommon=2, Rare=3, Epic=4, Legendary=5, Mythic=6, Secret=7 }
-local function getRarityValue(r) return RarityTiers[r] or 0 end
-local function getFishRarity(data) return data and data.Data and data.Data.Rarity or "Common" end
-
--- Teleport
-local Teleport = {}
-function Teleport.to(locationName)
-    local cf = LOCATIONS[locationName]
-    if not cf then warn("[Teleport] Not found") return false end
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = cf
-            print("[Teleport] -> " .. locationName)
+        local c = LP.Character
+        if c and c:FindFirstChild("HumanoidRootPart") then
+            c.HumanoidRootPart.CFrame = cf
         end
     end)
-    return true
 end
 
--- GPU Saver (unchanged)
-local gpuActive, whiteScreen = false, nil
-local function enableGPU()
+-- ====================================================================
+-- GPU SAVER
+-- ====================================================================
+local gpuActive, ws = false, nil
+local function gpuOn()
     if gpuActive then return end
     gpuActive = true
     pcall(function()
@@ -185,27 +98,26 @@ local function enableGPU()
         game.Lighting.FogEnd = 1
         setfpscap(8)
     end)
-    whiteScreen = Instance.new("ScreenGui")
-    whiteScreen.ResetOnSpawn = false
-    whiteScreen.DisplayOrder = 999999
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1,0,1,0)
-    frame.BackgroundColor3 = Color3.new(0.1,0.1,0.1)
-    frame.Parent = whiteScreen
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0,400,0,100)
-    label.Position = UDim2.new(0.5,-200,0.5,-50)
-    label.BackgroundTransparency = 1
-    label.Text = "GPU SAVER ACTIVE\nAuto Fishing"
-    label.TextColor3 = Color3.new(0,1,0)
-    label.TextSize = 28
-    label.Font = Enum.Font.GothamBold
-    label.TextAlignment = Enum.TextAlignment.Center
-    label.Parent = frame
-    whiteScreen.Parent = game.CoreGui
-    print("[GPU] Enabled")
+    ws = Instance.new("ScreenGui")
+    ws.ResetOnSpawn = false
+    ws.DisplayOrder = 999999
+    local f = Instance.new("Frame")
+    f.Size = UDim2.new(1,0,1,0)
+    f.BackgroundColor3 = Color3.new(0.1,0.1,0.1)
+    f.Parent = ws
+    local l = Instance.new("TextLabel")
+    l.Size = UDim2.new(0,400,0,100)
+    l.Position = UDim2.new(0.5,-200,0.5,-50)
+    l.BackgroundTransparency = 1
+    l.Text = "GPU SAVER ACTIVE"
+    l.TextColor3 = Color3.new(0,1,0)
+    l.TextSize = 28
+    l.Font = Enum.Font.GothamBold
+    l.TextAlignment = Enum.TextAlignment.Center
+    l.Parent = f
+    ws.Parent = game.CoreGui
 end
-local function disableGPU()
+local function gpuOff()
     if not gpuActive then return end
     gpuActive = false
     pcall(function()
@@ -214,329 +126,710 @@ local function disableGPU()
         game.Lighting.FogEnd = 100000
         setfpscap(0)
     end)
-    if whiteScreen then whiteScreen:Destroy() whiteScreen = nil end
-    print("[GPU] Disabled")
+    if ws then ws:Destroy() ws = nil end
 end
 
--- Anti-AFK
-LocalPlayer.Idle:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
-end)
+-- ====================================================================
+-- NETWORK EVENTS
+-- ====================================================================
+local function getRemotes()
+    local net = RS.Packages._Index["sleitnick_net@0.2.0"].net
+    return {
+        fish = net:WaitForChild("RE/FishingCompleted"),
+        sell = net:WaitForChild("RF/SellAllItems"),
+        charge = net:WaitForChild("RF/ChargeFishingRod"),
+        mini = net:WaitForChild("RF/RequestFishingMinigameStarted"),
+        equip = net:WaitForChild("RE/EquipToolFromHotbar"),
+        unequip = net:WaitForChild("RE/UnequipToolFromHotbar"),
+        fav = net:WaitForChild("RE/FavoriteItem")
+    }
+end
+local ev = getRemotes()
 
--- Auto Favorite (unchanged)
-local favoritedItems = {}
-local function isItemFavorited(uuid)
+-- ====================================================================
+-- FAVORITE MODULES
+-- ====================================================================
+local ItemUtility = require(RS.Shared.ItemUtility)
+local Replion = require(RS.Packages.Replion)
+local PlayerData = Replion.Client:WaitReplion("Data")
+local RarityTiers = { Common=1, Uncommon=2, Rare=3, Epic=4, Legendary=5, Mythic=6, Secret=7 }
+local function getRarityValue(r) return RarityTiers[r] or 0 end
+local function getFishRarity(d) return d and d.Data and d.Data.Rarity or "Common" end
+
+local faved = {}
+local function isFav(uuid)
     local s,r = pcall(function()
-        local items = PlayerData:GetExpect("Inventory").Items
-        for _,it in ipairs(items) do if it.UUID == uuid then return it.Favorited == true end end
+        for _,it in ipairs(PlayerData:GetExpect("Inventory").Items) do
+            if it.UUID == uuid then return it.Favorited == true end
+        end
         return false
     end)
     return s and r or false
 end
-local function autoFavoriteByRarity()
-    if not Config.AutoFavorite then return end
-    local targetRarity = Config.FavoriteRarity
-    local targetVal = getRarityValue(targetRarity)
-    if targetVal < 6 then targetVal = 6 end
-    local favorited = 0
+local function autoFav()
+    if not _.cfg.afav then return end
+    local target = _.cfg.favR
+    local tv = getRarityValue(target)
+    if tv < 6 then tv = 6 end
     pcall(function()
-        local items = PlayerData:GetExpect("Inventory").Items
-        if not items then return end
-        for _,it in ipairs(items) do
+        for _,it in ipairs(PlayerData:GetExpect("Inventory").Items) do
             local data = ItemUtility:GetItemData(it.Id)
             if data and data.Data then
-                local rarity = getFishRarity(data)
-                if getRarityValue(rarity) == targetVal and targetVal >= 6 then
-                    if not isItemFavorited(it.UUID) and not favoritedItems[it.UUID] then
-                        Events.favorite:FireServer(it.UUID)
-                        favoritedItems[it.UUID] = true
-                        favorited = favorited + 1
-                        print("[Favorite] " .. (data.Data.Name or "?") .. " (" .. rarity .. ")")
-                        task.wait(0.3)
+                local r = getFishRarity(data)
+                if getRarityValue(r) == tv and tv >= 6 then
+                    if not isFav(it.UUID) and not faved[it.UUID] then
+                        ev.fav:FireServer(it.UUID)
+                        faved[it.UUID] = true
+                        task.wait(randDelay(0.3, 0.1))
                     end
                 end
             end
         end
     end)
-    if favorited > 0 then print("[Favorite] Done: " .. favorited) end
 end
-task.spawn(function() while true do task.wait(10) if Config.AutoFavorite then autoFavoriteByRarity() end end end)
+task.spawn(function() while task.wait(randDelay(10, 3)) do if _.cfg.afav then autoFav() end end end)
 
 -- ====================================================================
--- FISHING LOGIC (human-like, safe)
+-- FISHING CORE
 -- ====================================================================
-local isFishing = false
-local fishingActive = false
-local lastEquipSlot = nil
-
 local function equipRod()
-    -- Only equip if not already equipped (check from toolbar or current tool)
-    local char = LocalPlayer.Character
-    local currentTool = char and char:FindFirstChildOfClass("Tool")
-    if currentTool and currentTool.Name:lower():find("rod") then
-        return true
-    end
+    local c = LP.Character
+    if c and c:FindFirstChildOfClass("Tool") then return true end
     pcall(function()
-        Events.equip:FireServer(1)
-        task.wait(randomDelay(0.05, 0.02))
-        lastEquipSlot = 1
+        ev.equip:FireServer(1)
+        task.wait(randDelay(0.05, 0.02))
     end)
     return true
 end
 
-local function castRod()
+local function cast()
     pcall(function()
         equipRod()
-        -- Use original values (captured from game) to avoid hash mismatch
-        local chargeVal = 1755848498.4834   -- original value
-        local minigameVal = 1.2854545116425 -- original value
-        Events.charge:InvokeServer(chargeVal)
-        task.wait(randomDelay(0.02, 0.01))
-        Events.minigame:InvokeServer(minigameVal, 1)
-        print("[Fishing] Cast")
+        ev.charge:InvokeServer(1755848498.4834)
+        task.wait(randDelay(0.02, 0.01))
+        ev.mini:InvokeServer(1.2854545116425, 1)
     end)
 end
 
-local function reelIn()
-    pcall(function()
-        Events.fishing:FireServer()
-        print("[Fishing] Reel")
-    end)
+local function reel()
+    pcall(function() ev.fish:FireServer() end)
 end
 
--- Main loop with random delays
-local function normalFishingLoop()
-    while fishingActive do
-        if not isFishing then
-            isFishing = true
-            -- Random pre-cast wait (mimic human reaction)
-            task.wait(randomDelay(0.3, 0.2))
-            castRod()
-            -- Wait for bite with variation
-            local biteWait = randomDelay(Config.FishDelay, 0.3)
-            task.wait(biteWait)
-            reelIn()
-            -- Post-catch delay
-            local catchWait = randomDelay(Config.CatchDelay, 0.15)
-            task.wait(catchWait)
-            isFishing = false
-        else
-            task.wait(0.1)
+-- Main loop (tersembunyi)
+local fishingState = { _.active, false }
+coroutine.wrap(function()
+    while true do
+        if fishingState[1] and not fishingState[2] then
+            fishingState[2] = true
+            task.wait(randDelay(0.4, 0.2))
+            cast()
+            task.wait(randDelay(_.cfg.fd, 0.3))
+            reel()
+            task.wait(randDelay(_.cfg.cd, 0.15))
+            fishingState[2] = false
+            task.wait(randDelay(0.8, 0.5))
         end
+        task.wait(0.1)
     end
-end
+end)()
 
--- AUTO CATCH (optional but risky, we add warning)
+-- Auto catch
 task.spawn(function()
     while true do
-        if Config.AutoCatch and not isFishing then
-            pcall(function()
-                Events.fishing:FireServer()
-            end)
-            task.wait(randomDelay(Config.CatchDelay, 0.15))
-        else
-            task.wait(0.5)
+        task.wait(randDelay(_.cfg.cd, 0.1))
+        if _.cfg.ac and not fishingState[2] then
+            pcall(function() ev.fish:FireServer() end)
         end
     end
 end)
 
 -- Auto sell
-local function simpleSell()
-    print("[Sell] Selling...")
-    local s = pcall(function() return Events.sell:InvokeServer() end)
-    if s then print("[Sell] Done (favorites kept)") else warn("[Sell] Failed") end
+local function sell()
+    pcall(function() ev.sell:InvokeServer() end)
 end
 task.spawn(function()
     while true do
-        task.wait(Config.SellDelay)
-        if Config.AutoSell then simpleSell() end
+        task.wait(_.cfg.sd)
+        if _.cfg.as then sell() end
+    end
+end)
+
+-- Anti-AFK
+task.spawn(function()
+    while _.active do
+        task.wait(randDelay(45, 15))
+        pcall(function()
+            UIS:SetMouseDelta(Vector2.new(math.random(-8,8), math.random(-5,5)))
+        end)
     end
 end)
 
 -- ====================================================================
--- RAYFIELD UI - TABLET PROFESSIONAL
+-- UI MANUAL (Tanpa Rayfield)
 -- ====================================================================
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local gui = Instance.new("ScreenGui")
+gui.Name = "KS"  -- nama pendek tidak mencurigakan
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
 
--- Custom theme for professional look
-Rayfield:SetConfiguration({
-    Theme = "Dark",
-    Font = Enum.Font.Gotham,
-    AccentColor = Color3.fromRGB(0, 150, 255),
-    BackgroundColor = Color3.fromRGB(20, 20, 25),
-    TextColor = Color3.fromRGB(240, 240, 240)
-})
+-- Main frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 360, 0, 540)
+frame.Position = UDim2.new(0.5, -180, 0.5, -270)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+frame.BackgroundTransparency = 0.15
+frame.BorderSizePixel = 0
+frame.ClipsDescendants = true
 
-local Window = Rayfield:CreateWindow({
-    Name = "KaeruShi HUB | v0.2",
-    LoadingTitle = "KaeruShi Fishing",
-    LoadingSubtitle = "Tablet Optimized",
-    ConfigurationSaving = { Enabled = false },
-    DisableWatermark = true,
-    Size = UDim2.new(0, 550, 0, 620)  -- Comfortable for tablet
-})
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = frame
 
--- Destroy watermark
-pcall(Rayfield.DestroyWatermark)
+local shadow = Instance.new("UIStroke")
+shadow.Color = Color3.fromRGB(255, 255, 255)
+shadow.Transparency = 0.9
+shadow.Thickness = 1
+shadow.Parent = frame
 
--- Create tabs
-local MainTab = Window:CreateTab("🎣 Fishing", nil)
-local TeleportTab = Window:CreateTab("🌍 Teleport", nil)
-local SettingsTab = Window:CreateTab("⚙️ Settings", nil)
-local InfoTab = Window:CreateTab("ℹ️ Info", nil)
+-- Blur effect
+local blur = Instance.new("BlurEffect")
+blur.Size = 8
+blur.Parent = frame
 
--- Main tab
-MainTab:CreateSection("Auto Fishing")
-local AutoFishToggle = MainTab:CreateToggle({
-    Name = "🤖 Auto Fish (Safe Mode)",
-    CurrentValue = Config.AutoFish,
-    Callback = function(v)
-        Config.AutoFish = v
-        fishingActive = v
-        if v then
-            print("[AutoFish] Started (safe mode)")
-            task.spawn(normalFishingLoop)
-        else
-            print("[AutoFish] Stopped")
-            pcall(function() Events.unequip:FireServer() end)
+-- Title bar (draggable)
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+titleBar.BackgroundTransparency = 0.3
+titleBar.BorderSizePixel = 0
+titleBar.Parent = frame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 12)
+titleCorner.Parent = titleBar
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -40, 1, 0)
+title.Position = UDim2.new(0, 20, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "⚡ KaeruShi HUB"
+title.TextColor3 = Color3.fromRGB(0, 150, 255)
+title.TextSize = 18
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Font = Enum.Font.GothamBold
+title.Parent = titleBar
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -40, 0, 20)
+subtitle.Position = UDim2.new(0, 20, 0, 22)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Fish It | v0.3"
+subtitle.TextColor3 = Color3.fromRGB(150, 150, 170)
+subtitle.TextSize = 10
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Font = Enum.Font.Gotham
+subtitle.Parent = titleBar
+
+-- Tab buttons
+local tabs = {"🎣 Fishing", "🌍 Teleport", "⚙️ Settings", "ℹ️ Info"}
+local tabButtons = {}
+local tabFrames = {}
+
+for i, name in ipairs(tabs) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.25, 0, 0, 35)
+    btn.Position = UDim2.new((i-1)*0.25, 0, 0, 45)
+    btn.BackgroundColor3 = i == 1 and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(35, 35, 45)
+    btn.BackgroundTransparency = i == 1 and 0.2 or 0.5
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 13
+    btn.Font = Enum.Font.GothamSemibold
+    btn.BorderSizePixel = 0
+    btn.Parent = frame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = btn
+    
+    tabButtons[i] = btn
+    
+    -- Tab content frame
+    local tabFrame = Instance.new("Frame")
+    tabFrame.Size = UDim2.new(1, -20, 1, -90)
+    tabFrame.Position = UDim2.new(0, 10, 0, 85)
+    tabFrame.BackgroundTransparency = 1
+    tabFrame.Visible = i == 1
+    tabFrame.Parent = frame
+    tabFrames[i] = tabFrame
+    
+    btn.MouseButton1Click:Connect(function()
+        for j, tb in ipairs(tabButtons) do
+            tb.BackgroundColor3 = j == i and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(35, 35, 45)
+            tb.BackgroundTransparency = j == i and 0.2 or 0.5
         end
-        saveConfig()
-    end
-})
-
-local AutoCatchToggle = MainTab:CreateToggle({
-    Name = "⚠️ Auto Catch (High Risk)",
-    CurrentValue = Config.AutoCatch,
-    Callback = function(v)
-        Config.AutoCatch = v
-        if v then
-            print("[WARNING] Auto Catch enabled - may trigger anti-cheat!")
+        for j, tf in ipairs(tabFrames) do
+            tf.Visible = j == i
         end
-        saveConfig()
-    end
-})
-
-MainTab:CreateInput({
-    Name = "Fish Delay (sec)",
-    PlaceholderText = "Default: 1.2",
-    Callback = function(val)
-        local num = tonumber(val)
-        if num and num >= 0.5 and num <= 5 then
-            Config.FishDelay = num
-            saveConfig()
-        end
-    end
-})
-MainTab:CreateInput({
-    Name = "Catch Delay (sec)",
-    PlaceholderText = "Default: 0.4",
-    Callback = function(val)
-        local num = tonumber(val)
-        if num and num >= 0.2 and num <= 2 then
-            Config.CatchDelay = num
-            saveConfig()
-        end
-    end
-})
-
-MainTab:CreateSection("Auto Sell")
-local AutoSellToggle = MainTab:CreateToggle({
-    Name = "💰 Auto Sell (Keeps Favorites)",
-    CurrentValue = Config.AutoSell,
-    Callback = function(v)
-        Config.AutoSell = v
-        saveConfig()
-    end
-})
-MainTab:CreateInput({
-    Name = "Sell Delay (sec)",
-    PlaceholderText = "Default: 45",
-    Callback = function(val)
-        local num = tonumber(val)
-        if num and num >= 15 and num <= 300 then
-            Config.SellDelay = num
-            saveConfig()
-        end
-    end
-})
-MainTab:CreateButton({
-    Name = "💰 Sell All Now",
-    Callback = simpleSell
-})
-
--- Teleport tab
-TeleportTab:CreateSection("📍 Locations")
-for name, _ in pairs(LOCATIONS) do
-    TeleportTab:CreateButton({
-        Name = name,
-        Callback = function() Teleport.to(name) end
-    })
+        _.currentTab = i
+    end)
 end
 
--- Settings tab
-SettingsTab:CreateSection("Performance")
-local GPUToggle = SettingsTab:CreateToggle({
-    Name = "💻 GPU Saver Mode",
-    CurrentValue = Config.GPUSaver,
-    Callback = function(v)
-        Config.GPUSaver = v
-        if v then enableGPU() else disableGPU() end
-        saveConfig()
+-- ========== TAB 1: FISHING ==========
+local t1 = tabFrames[1]
+
+-- Auto Fish toggle
+local afBtn = Instance.new("TextButton")
+afBtn.Size = UDim2.new(1, 0, 0, 45)
+afBtn.Position = UDim2.new(0, 0, 0, 0)
+afBtn.BackgroundColor3 = _.cfg.af and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+afBtn.Text = _.cfg.af and "▶ Auto Fish: ON" or "⏸ Auto Fish: OFF"
+afBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+afBtn.TextSize = 14
+afBtn.Font = Enum.Font.GothamSemibold
+afBtn.BorderSizePixel = 0
+
+local afCorner = Instance.new("UICorner")
+afCorner.CornerRadius = UDim.new(0, 8)
+afCorner.Parent = afBtn
+afBtn.Parent = t1
+
+afBtn.MouseButton1Click:Connect(function()
+    _.cfg.af = not _.cfg.af
+    _.active = _.cfg.af
+    afBtn.Text = _.cfg.af and "▶ Auto Fish: ON" or "⏸ Auto Fish: OFF"
+    afBtn.BackgroundColor3 = _.cfg.af and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+    statusLabel.Text = _.cfg.af and "● Fishing..." or "● Idle"
+    statusLabel.TextColor3 = _.cfg.af and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(150, 150, 150)
+    saveCfg()
+end)
+
+-- Auto Catch toggle (risky)
+local acBtn = Instance.new("TextButton")
+acBtn.Size = UDim2.new(1, 0, 0, 45)
+acBtn.Position = UDim2.new(0, 0, 0, 55)
+acBtn.BackgroundColor3 = _.cfg.ac and Color3.fromRGB(200, 100, 0) or Color3.fromRGB(45, 45, 55)
+acBtn.Text = _.cfg.ac and "⚠️ Auto Catch: ON (RISK)" or "🎯 Auto Catch: OFF"
+acBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+acBtn.TextSize = 14
+acBtn.Font = Enum.Font.GothamSemibold
+acBtn.BorderSizePixel = 0
+
+local acCorner = Instance.new("UICorner")
+acCorner.CornerRadius = UDim.new(0, 8)
+acCorner.Parent = acBtn
+acBtn.Parent = t1
+
+acBtn.MouseButton1Click:Connect(function()
+    _.cfg.ac = not _.cfg.ac
+    acBtn.Text = _.cfg.ac and "⚠️ Auto Catch: ON (RISK)" or "🎯 Auto Catch: OFF"
+    acBtn.BackgroundColor3 = _.cfg.ac and Color3.fromRGB(200, 100, 0) or Color3.fromRGB(45, 45, 55)
+    saveCfg()
+end)
+
+-- Fish Delay input
+local fdLabel = Instance.new("TextLabel")
+fdLabel.Size = UDim2.new(0.5, -5, 0, 30)
+fdLabel.Position = UDim2.new(0, 0, 0, 110)
+fdLabel.BackgroundTransparency = 1
+fdLabel.Text = "Fish Delay: " .. _.cfg.fd .. "s"
+fdLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
+fdLabel.TextSize = 12
+fdLabel.TextXAlignment = Enum.TextXAlignment.Left
+fdLabel.Font = Enum.Font.Gotham
+fdLabel.Parent = t1
+
+local fdInput = Instance.new("TextBox")
+fdInput.Size = UDim2.new(0.4, 0, 0, 30)
+fdInput.Position = UDim2.new(0.6, 0, 0, 110)
+fdInput.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+fdInput.Text = tostring(_.cfg.fd)
+fdInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+fdInput.TextSize = 12
+fdInput.Font = Enum.Font.Gotham
+fdInput.PlaceholderText = "1.2"
+fdInput.Parent = t1
+
+local fdCorner = Instance.new("UICorner")
+fdCorner.CornerRadius = UDim.new(0, 6)
+fdCorner.Parent = fdInput
+
+fdInput.FocusLost:Connect(function()
+    local n = tonumber(fdInput.Text)
+    if n and n >= 0.8 and n <= 5 then
+        _.cfg.fd = n
+        fdLabel.Text = "Fish Delay: " .. n .. "s"
+        saveCfg()
+    else
+        fdInput.Text = tostring(_.cfg.fd)
     end
-})
+end)
 
-SettingsTab:CreateSection("Auto Favorite")
-local AutoFavToggle = SettingsTab:CreateToggle({
-    Name = "⭐ Auto Favorite",
-    CurrentValue = Config.AutoFavorite,
-    Callback = function(v)
-        Config.AutoFavorite = v
-        saveConfig()
+-- Catch Delay input
+local cdLabel = Instance.new("TextLabel")
+cdLabel.Size = UDim2.new(0.5, -5, 0, 30)
+cdLabel.Position = UDim2.new(0, 0, 0, 145)
+cdLabel.BackgroundTransparency = 1
+cdLabel.Text = "Catch Delay: " .. _.cfg.cd .. "s"
+cdLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
+cdLabel.TextSize = 12
+cdLabel.TextXAlignment = Enum.TextXAlignment.Left
+cdLabel.Font = Enum.Font.Gotham
+cdLabel.Parent = t1
+
+local cdInput = Instance.new("TextBox")
+cdInput.Size = UDim2.new(0.4, 0, 0, 30)
+cdInput.Position = UDim2.new(0.6, 0, 0, 145)
+cdInput.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+cdInput.Text = tostring(_.cfg.cd)
+cdInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+cdInput.TextSize = 12
+cdInput.Font = Enum.Font.Gotham
+cdInput.Parent = t1
+
+local cdCorner = Instance.new("UICorner")
+cdCorner.CornerRadius = UDim.new(0, 6)
+cdCorner.Parent = cdInput
+
+cdInput.FocusLost:Connect(function()
+    local n = tonumber(cdInput.Text)
+    if n and n >= 0.2 and n <= 2 then
+        _.cfg.cd = n
+        cdLabel.Text = "Catch Delay: " .. n .. "s"
+        saveCfg()
+    else
+        cdInput.Text = tostring(_.cfg.cd)
     end
-})
-local RarityDropdown = SettingsTab:CreateDropdown({
-    Name = "Favorite Rarity",
-    Options = {"Mythic", "Secret"},
-    CurrentOption = Config.FavoriteRarity,
-    Callback = function(opt)
-        Config.FavoriteRarity = opt
-        saveConfig()
+end)
+
+-- Separator
+local sep = Instance.new("Frame")
+sep.Size = UDim2.new(1, 0, 0, 1)
+sep.Position = UDim2.new(0, 0, 0, 190)
+sep.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+sep.BackgroundTransparency = 0.5
+sep.Parent = t1
+
+-- Auto Sell toggle
+local asBtn = Instance.new("TextButton")
+asBtn.Size = UDim2.new(1, 0, 0, 45)
+asBtn.Position = UDim2.new(0, 0, 0, 200)
+asBtn.BackgroundColor3 = _.cfg.as and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+asBtn.Text = _.cfg.as and "💰 Auto Sell: ON" or "💰 Auto Sell: OFF"
+asBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+asBtn.TextSize = 14
+asBtn.Font = Enum.Font.GothamSemibold
+asBtn.BorderSizePixel = 0
+
+local asCorner = Instance.new("UICorner")
+asCorner.CornerRadius = UDim.new(0, 8)
+asCorner.Parent = asBtn
+asBtn.Parent = t1
+
+asBtn.MouseButton1Click:Connect(function()
+    _.cfg.as = not _.cfg.as
+    asBtn.Text = _.cfg.as and "💰 Auto Sell: ON" or "💰 Auto Sell: OFF"
+    asBtn.BackgroundColor3 = _.cfg.as and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+    saveCfg()
+end)
+
+-- Sell Delay input
+local sdLabel = Instance.new("TextLabel")
+sdLabel.Size = UDim2.new(0.5, -5, 0, 30)
+sdLabel.Position = UDim2.new(0, 0, 0, 255)
+sdLabel.BackgroundTransparency = 1
+sdLabel.Text = "Sell Delay: " .. _.cfg.sd .. "s"
+sdLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
+sdLabel.TextSize = 12
+sdLabel.TextXAlignment = Enum.TextXAlignment.Left
+sdLabel.Font = Enum.Font.Gotham
+sdLabel.Parent = t1
+
+local sdInput = Instance.new("TextBox")
+sdInput.Size = UDim2.new(0.4, 0, 0, 30)
+sdInput.Position = UDim2.new(0.6, 0, 0, 255)
+sdInput.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+sdInput.Text = tostring(_.cfg.sd)
+sdInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+sdInput.TextSize = 12
+sdInput.Font = Enum.Font.Gotham
+sdInput.Parent = t1
+
+local sdCorner = Instance.new("UICorner")
+sdCorner.CornerRadius = UDim.new(0, 6)
+sdCorner.Parent = sdInput
+
+sdInput.FocusLost:Connect(function()
+    local n = tonumber(sdInput.Text)
+    if n and n >= 15 and n <= 300 then
+        _.cfg.sd = n
+        sdLabel.Text = "Sell Delay: " .. n .. "s"
+        saveCfg()
+    else
+        sdInput.Text = tostring(_.cfg.sd)
     end
-})
-SettingsTab:CreateButton({
-    Name = "⭐ Favorite All Now",
-    Callback = autoFavoriteByRarity
-})
+end)
 
--- Info tab
-InfoTab:CreateParagraph({
-    Title = "KaeruShi HUB v0.2",
-    Content = [[
-• Safe Auto Fishing (human-like delays)
-• Auto Sell (keeps favorited fish)
-• Teleport system
-• GPU Saver / Anti-AFK
-• Auto Favorite (Mythic/Secret)
-• Optimized for tablet screens
-    ]]
-})
-InfoTab:CreateParagraph({
-    Title = "⚠️ Warning",
-    Content = [[
-Auto Catch feature is high risk.
-Use at your own risk. 
-Avoid using very low delays.
-    ]]
-})
+-- Sell Now button
+local sellBtn = Instance.new("TextButton")
+sellBtn.Size = UDim2.new(1, 0, 0, 40)
+sellBtn.Position = UDim2.new(0, 0, 0, 295)
+sellBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 60)
+sellBtn.Text = "💰 Sell All Now"
+sellBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+sellBtn.TextSize = 14
+sellBtn.Font = Enum.Font.GothamSemibold
+sellBtn.BorderSizePixel = 0
 
--- Startup notification
-Rayfield:Notify({
-    Title = "KaeruShi HUB",
-    Content = "Ready to fish | Safe Mode",
-    Duration = 4,
-    Image = 4483362458
-})
+local sellCorner = Instance.new("UICorner")
+sellCorner.CornerRadius = UDim.new(0, 8)
+sellCorner.Parent = sellBtn
+sellBtn.Parent = t1
 
-print("KaeruShi HUB v0.2 Loaded - Tablet Edition")
-print("Anti-Cheat enhanced | Safe fishing mode")
+sellBtn.MouseButton1Click:Connect(function()
+    sellBtn.Text = "⏳ Selling..."
+    task.spawn(function()
+        sell()
+        task.wait(0.5)
+        sellBtn.Text = "💰 Sell All Now"
+    end)
+end)
+
+-- Status
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0, 30)
+statusLabel.Position = UDim2.new(0, 0, 0, 345)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = _.active and "● Fishing..." or "● Idle"
+statusLabel.TextColor3 = _.active and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(150, 150, 150)
+statusLabel.TextSize = 11
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Parent = t1
+
+-- ========== TAB 2: TELEPORT ==========
+local t2 = tabFrames[2]
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, 0, 1, 0)
+scroll.Position = UDim2.new(0, 0, 0, 0)
+scroll.BackgroundTransparency = 1
+scroll.CanvasSize = UDim2.new(0, 0, 0, #locs * 40)
+scroll.ScrollBarThickness = 4
+scroll.Parent = t2
+
+local yPos = 0
+for name, _ in pairs(locs) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.Position = UDim2.new(0, 0, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    btn.Text = "📍 " .. name
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 12
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Font = Enum.Font.Gotham
+    btn.BorderSizePixel = 0
+    btn.Parent = scroll
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function() tp(name) end)
+    yPos = yPos + 40
+end
+
+-- ========== TAB 3: SETTINGS ==========
+local t3 = tabFrames[3]
+
+-- GPU Saver toggle
+local gpuBtn = Instance.new("TextButton")
+gpuBtn.Size = UDim2.new(1, 0, 0, 45)
+gpuBtn.Position = UDim2.new(0, 0, 0, 0)
+gpuBtn.BackgroundColor3 = _.cfg.gpu and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+gpuBtn.Text = _.cfg.gpu and "💻 GPU Saver: ON" or "💻 GPU Saver: OFF"
+gpuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+gpuBtn.TextSize = 14
+gpuBtn.Font = Enum.Font.GothamSemibold
+gpuBtn.BorderSizePixel = 0
+
+local gpuCorner = Instance.new("UICorner")
+gpuCorner.CornerRadius = UDim.new(0, 8)
+gpuCorner.Parent = gpuBtn
+gpuBtn.Parent = t3
+
+gpuBtn.MouseButton1Click:Connect(function()
+    _.cfg.gpu = not _.cfg.gpu
+    gpuBtn.Text = _.cfg.gpu and "💻 GPU Saver: ON" or "💻 GPU Saver: OFF"
+    gpuBtn.BackgroundColor3 = _.cfg.gpu and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+    if _.cfg.gpu then gpuOn() else gpuOff() end
+    saveCfg()
+end)
+
+-- Auto Favorite toggle
+local favBtn = Instance.new("TextButton")
+favBtn.Size = UDim2.new(1, 0, 0, 45)
+favBtn.Position = UDim2.new(0, 0, 0, 55)
+favBtn.BackgroundColor3 = _.cfg.afav and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+favBtn.Text = _.cfg.afav and "⭐ Auto Favorite: ON" or "⭐ Auto Favorite: OFF"
+favBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+favBtn.TextSize = 14
+favBtn.Font = Enum.Font.GothamSemibold
+favBtn.BorderSizePixel = 0
+
+local favCorner = Instance.new("UICorner")
+favCorner.CornerRadius = UDim.new(0, 8)
+favCorner.Parent = favBtn
+favBtn.Parent = t3
+
+favBtn.MouseButton1Click:Connect(function()
+    _.cfg.afav = not _.cfg.afav
+    favBtn.Text = _.cfg.afav and "⭐ Auto Favorite: ON" or "⭐ Auto Favorite: OFF"
+    favBtn.BackgroundColor3 = _.cfg.afav and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 55)
+    saveCfg()
+end)
+
+-- Favorite Rarity dropdown
+local favLabel = Instance.new("TextLabel")
+favLabel.Size = UDim2.new(1, 0, 0, 30)
+favLabel.Position = UDim2.new(0, 0, 0, 110)
+favLabel.BackgroundTransparency = 1
+favLabel.Text = "Favorite Rarity: " .. _.cfg.favR
+favLabel.TextColor3 = Color3.fromRGB(200, 200, 220)
+favLabel.TextSize = 13
+favLabel.Font = Enum.Font.Gotham
+favLabel.Parent = t3
+
+local favRarityBtn = Instance.new("TextButton")
+favRarityBtn.Size = UDim2.new(0.5, 0, 0, 35)
+favRarityBtn.Position = UDim2.new(0.25, 0, 0, 145)
+favRarityBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+favRarityBtn.Text = _.cfg.favR
+favRarityBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+favRarityBtn.TextSize = 13
+favRarityBtn.Font = Enum.Font.GothamSemibold
+favRarityBtn.BorderSizePixel = 0
+favRarityBtn.Parent = t3
+
+local favRarityCorner = Instance.new("UICorner")
+favRarityCorner.CornerRadius = UDim.new(0, 8)
+favRarityCorner.Parent = favRarityBtn
+
+local rarityOptions = {"Mythic", "Secret"}
+local rarityIndex = rarityOptions[1] == _.cfg.favR and 1 or 2
+favRarityBtn.MouseButton1Click:Connect(function()
+    rarityIndex = rarityIndex % 2 + 1
+    local newRarity = rarityOptions[rarityIndex]
+    _.cfg.favR = newRarity
+    favLabel.Text = "Favorite Rarity: " .. newRarity
+    favRarityBtn.Text = newRarity
+    saveCfg()
+end)
+
+-- Favorite Now button
+local favNowBtn = Instance.new("TextButton")
+favNowBtn.Size = UDim2.new(1, 0, 0, 40)
+favNowBtn.Position = UDim2.new(0, 0, 0, 195)
+favNowBtn.BackgroundColor3 = Color3.fromRGB(100, 80, 40)
+favNowBtn.Text = "⭐ Favorite All Now"
+favNowBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+favNowBtn.TextSize = 14
+favNowBtn.Font = Enum.Font.GothamSemibold
+favNowBtn.BorderSizePixel = 0
+
+local favNowCorner = Instance.new("UICorner")
+favNowCorner.CornerRadius = UDim.new(0, 8)
+favNowCorner.Parent = favNowBtn
+favNowBtn.Parent = t3
+
+favNowBtn.MouseButton1Click:Connect(function()
+    favNowBtn.Text = "⏳ Processing..."
+    task.spawn(function()
+        autoFav()
+        task.wait(0.5)
+        favNowBtn.Text = "⭐ Favorite All Now"
+    end)
+end)
+
+-- ========== TAB 4: INFO ==========
+local t4 = tabFrames[4]
+
+local infoTitle = Instance.new("TextLabel")
+infoTitle.Size = UDim2.new(1, 0, 0, 35)
+infoTitle.Position = UDim2.new(0, 0, 0, 0)
+infoTitle.BackgroundTransparency = 1
+infoTitle.Text = "KaeruShi HUB v0.3"
+infoTitle.TextColor3 = Color3.fromRGB(0, 150, 255)
+infoTitle.TextSize = 18
+infoTitle.Font = Enum.Font.GothamBold
+infoTitle.Parent = t4
+
+local infoContent = Instance.new("TextLabel")
+infoContent.Size = UDim2.new(1, 0, 0, 200)
+infoContent.Position = UDim2.new(0, 0, 0, 40)
+infoContent.BackgroundTransparency = 1
+infoContent.Text = "• Auto Fishing (Human-like)\n• Auto Sell (Keeps Favorites)\n• Auto Catch (High Risk)\n• Teleport System\n• GPU Saver Mode\n• Auto Favorite (Mythic/Secret)\n• Anti-AFK Protection\n• Tablet Optimized"
+infoContent.TextColor3 = Color3.fromRGB(200, 200, 220)
+infoContent.TextSize = 12
+infoContent.TextXAlignment = Enum.TextXAlignment.Left
+infoContent.TextYAlignment = Enum.TextYAlignment.Top
+infoContent.Font = Enum.Font.Gotham
+infoContent.Parent = t4
+
+local warning = Instance.new("TextLabel")
+warning.Size = UDim2.new(1, 0, 0, 80)
+warning.Position = UDim2.new(0, 0, 0, 250)
+warning.BackgroundTransparency = 1
+warning.Text = "⚠️ Auto Catch = High Risk\nUse at your own risk.\nRecommended Fish Delay > 1.0s"
+warning.TextColor3 = Color3.fromRGB(255, 150, 100)
+warning.TextSize = 11
+warning.TextXAlignment = Enum.TextXAlignment.Left
+warning.Font = Enum.Font.Gotham
+warning.Parent = t4
+
+-- Watermark (tanpa nama library)
+local watermark = Instance.new("TextLabel")
+watermark.Size = UDim2.new(1, 0, 0, 20)
+watermark.Position = UDim2.new(0, 0, 1, -25)
+watermark.BackgroundTransparency = 1
+watermark.Text = "KS | v0.3"
+watermark.TextColor3 = Color3.fromRGB(100, 100, 120)
+watermark.TextSize = 10
+watermark.Font = Enum.Font.Gotham
+watermark.Parent = frame
+
+-- Drag functionality
+local dragging = false
+local dragStart, startPos
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Keybind toggle (F)
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        frame.Visible = not frame.Visible
+    end
+end)
+
+frame.Parent = gui
+
+print("KaeruShi HUB v0.3 | Manual UI | Ready")
