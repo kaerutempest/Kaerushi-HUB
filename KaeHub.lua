@@ -1,6 +1,6 @@
 -- ====================================================================
--- KaeruShi HUBFISH | V0.1 |
--- Based on Working test.lua Fishing Method
+-- KaeruShi HUBFISH | V0.2 | Tablet Edition
+-- UI: Rayfield | Anti-Detection Enhanced
 -- ====================================================================
 
 -- ====== CRITICAL DEPENDENCY VALIDATION ======
@@ -13,22 +13,15 @@ local success, errorMsg = pcall(function()
         ReplicatedStorage = game:GetService("ReplicatedStorage"),
         HttpService = game:GetService("HttpService")
     }
-
     for serviceName, service in pairs(services) do
-        if not service then
-            error("Critical service missing: " .. serviceName)
-        end
+        if not service then error("Critical service missing: " .. serviceName) end
     end
-
     local LocalPlayer = game:GetService("Players").LocalPlayer
-    if not LocalPlayer then
-        error("LocalPlayer not available")
-    end
-
+    if not LocalPlayer then error("LocalPlayer not available") end
     return true
 end)
 if not success then
-    error("❌ [Auto Fish] Critical dependency check failed: " .. tostring(errorMsg))
+    error("❌ Critical dependency check failed: " .. tostring(errorMsg))
     return
 end
 
@@ -43,27 +36,22 @@ local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 
 -- ====================================================================
--- ANTI-CHEAT FIX (enhanced)
+-- ENHANCED ANTI-CHEAT (block kick, crash, and hide script)
 -- ====================================================================
 local function AntiCheatFix()
-    -- Block kick attempts
+    -- Block kick
     local player = LocalPlayer
     if player and player.Kick then
         local oldKick = player.Kick
         player.Kick = function(self, ...)
-            print("[Anti-Cheat] ⚠️ Kick attempt blocked")
-            -- Stop fishing to prevent further detection
+            print("[AC] Kick blocked")
             fishingActive = false
             return nil
         end
     end
-
-    -- Block game crash
-    if game.Crash then
-        game.Crash = function() end
-    end
-
-    -- Hide script from detection (advanced)
+    -- Block crash
+    if game.Crash then game.Crash = function() end end
+    -- Hide from detection (experimental)
     if debug and debug.setupvalue then
         local gc = getgc and getgc(true) or {}
         for _, v in ipairs(gc) do
@@ -75,60 +63,38 @@ local function AntiCheatFix()
             end
         end
     end
-
-    -- Additional: prevent detection by hooking some game functions (optional)
-    pcall(function()
-        if getgenv and getgenv()._G then
-            -- Attempt to hide from environment scanning
-            getgenv()._G = nil
-        end
-    end)
-
-    print("[Anti-Cheat] Enhanced protection loaded")
+    print("[AC] Enhanced protection loaded")
 end
 pcall(AntiCheatFix)
 
 -- ====================================================================
--- HELPER FUNCTIONS FOR RANDOMIZATION
+-- HELPER: RANDOM DELAY (human-like variation)
 -- ====================================================================
 local function randomDelay(base, variance)
     return base + (math.random() * variance * 2 - variance)
 end
 
--- Generate randomized values for remote parameters (to bypass SHA-256 hash checks)
-local function getChargeValue()
-    -- Base value from original, but add small random variation
-    return 1755848498.4834 + (math.random() * 10 - 5)
-end
-
-local function getMinigameValue()
-    return 1.2854545116425 + (math.random() * 0.1 - 0.05)
-end
-
 -- ====================================================================
 -- CONFIGURATION
 -- ====================================================================
-local CONFIG_FOLDER = "OptimizedAutoFish"
+local CONFIG_FOLDER = "KaeruShiConfig"
 local CONFIG_FILE = CONFIG_FOLDER .. "/config_" .. LocalPlayer.UserId .. ".json"
 local DefaultConfig = {
     AutoFish = false,
     AutoSell = false,
-    AutoCatch = false,
+    AutoCatch = false,     -- WARNING: high risk of detection
     GPUSaver = false,
-    FishDelay = 0.9,
-    CatchDelay = 0.2,
-    SellDelay = 30,
+    FishDelay = 1.2,
+    CatchDelay = 0.4,
+    SellDelay = 45,
     TeleportLocation = "Sisyphus Statue",
     AutoFavorite = true,
     FavoriteRarity = "Mythic"
 }
-
 local Config = {}
-for k, v in pairs(DefaultConfig) do
-    Config[k] = v
-end
+for k, v in pairs(DefaultConfig) do Config[k] = v end
 
--- Teleport Locations (COMPLETE LIST)
+-- Teleport Locations (unchanged)
 local LOCATIONS = {
     ["Spawn"] = CFrame.new(45.2788086, 252.562927, 2987.10913, 1, 0, 0, 0, 1, 0, 0, 1),
     ["Sisyphus Statue"] = CFrame.new(-3728.21606, -135.074417, -1012.12744, -0.977224171, 7.74980258e-09, -0.212209702, 1.566994e-08, 1, -3.5640408e-08, 0.212209702, -3.81539813e-08, -0.977224171),
@@ -146,40 +112,28 @@ local LOCATIONS = {
     ["Sacred Temple"] = CFrame.new(1466.92151, -21.8750591, -622.835693, -0.764787138, 8.14444334e-09, 0.644283056, 2.31097452e-08, 1, 1.4791004e-08, -0.644283056, 2.6201187e-08, -0.764787138)
 }
 
--- ====================================================================
--- CONFIG FUNCTIONS
--- ====================================================================
+-- Config functions (save/load)
 local function ensureFolder()
     if not isfolder or not makefolder then return false end
-    if not isfolder(CONFIG_FOLDER) then
-        pcall(function() makefolder(CONFIG_FOLDER) end)
-    end
+    if not isfolder(CONFIG_FOLDER) then pcall(function() makefolder(CONFIG_FOLDER) end) end
     return isfolder(CONFIG_FOLDER)
 end
-
 local function saveConfig()
     if not writefile or not ensureFolder() then return end
-    pcall(function()
-        writefile(CONFIG_FILE, HttpService:JSONEncode(Config))
-        print("[Config] Settings saved!")
-    end)
+    pcall(function() writefile(CONFIG_FILE, HttpService:JSONEncode(Config)) print("[Config] Saved") end)
 end
-
 local function loadConfig()
     if not readfile or not isfile or not isfile(CONFIG_FILE) then return end
     pcall(function()
         local data = HttpService:JSONDecode(readfile(CONFIG_FILE))
-        for k, v in pairs(data) do
-            if DefaultConfig[k] == nil then Config[k] = v end
-        end
-        print("[Config] Settings loaded!")
+        for k, v in pairs(data) do if DefaultConfig[k] == nil then Config[k] = v end end
+        print("[Config] Loaded")
     end)
 end
-
 loadConfig()
 
 -- ====================================================================
--- NETWORK EVENTS
+-- NETWORK EVENTS (verified from game)
 -- ====================================================================
 local function getNetworkEvents()
     local net = ReplicatedStorage.Packages._Index["sleitnick_net@0.2.0"].net
@@ -188,71 +142,40 @@ local function getNetworkEvents()
         sell = net:WaitForChild("RF/SellAllItems"),
         charge = net:WaitForChild("RF/ChargeFishingRod"),
         minigame = net:WaitForChild("RF/RequestFishingMinigameStarted"),
-        cancel = net:WaitForChild("RF/CancelFishingInputs"),
         equip = net:WaitForChild("RE/EquipToolFromHotbar"),
         unequip = net:WaitForChild("RE/UnequipToolFromHotbar"),
         favorite = net:WaitForChild("RE/FavoriteItem")
     }
 end
-
 local Events = getNetworkEvents()
 
--- ====================================================================
--- MODULES FOR AUTO FAVORITE
--- ====================================================================
+-- Modules for favorite
 local ItemUtility = require(ReplicatedStorage.Shared.ItemUtility)
 local Replion = require(ReplicatedStorage.Packages.Replion)
 local PlayerData = Replion.Client:WaitReplion("Data")
 
--- ====================================================================
--- RARITY SYSTEM
--- ====================================================================
-local RarityTiers = {
-    Common = 1,
-    Uncommon = 2,
-    Rare = 3,
-    Epic = 4,
-    Legendary = 5,
-    Mythic = 6,
-    Secret = 7
-}
+-- Rarity system
+local RarityTiers = { Common=1, Uncommon=2, Rare=3, Epic=4, Legendary=5, Mythic=6, Secret=7 }
+local function getRarityValue(r) return RarityTiers[r] or 0 end
+local function getFishRarity(data) return data and data.Data and data.Data.Rarity or "Common" end
 
-local function getRarityValue(rarity)
-    return RarityTiers[rarity] or 0
-end
-
-local function getFishRarity(itemData)
-    if not itemData or not itemData.Data then return "Common" end
-    return itemData.Data.Rarity or "Common"
-end
-
--- ====================================================================
--- TELEPORT SYSTEM (from dev1.lua)
--- ====================================================================
+-- Teleport
 local Teleport = {}
 function Teleport.to(locationName)
-    local cframe = LOCATIONS[locationName]
-    if not cframe then
-        warn("[Teleport] Location not found: " .. tostring(locationName))
-        return false
-    end
-    local success = pcall(function()
-        local character = LocalPlayer.Character
-        if not character then return end
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        if not rootPart then return end
-        rootPart.CFrame = cframe
-        print("[Teleport] Moved to " .. locationName)
+    local cf = LOCATIONS[locationName]
+    if not cf then warn("[Teleport] Not found") return false end
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = cf
+            print("[Teleport] -> " .. locationName)
+        end
     end)
-    return success
+    return true
 end
 
--- ====================================================================
--- GPU SAVER
--- ====================================================================
-local gpuActive = false
-local whiteScreen = nil
-
+-- GPU Saver (unchanged)
+local gpuActive, whiteScreen = false, nil
 local function enableGPU()
     if gpuActive then return end
     gpuActive = true
@@ -266,25 +189,22 @@ local function enableGPU()
     whiteScreen.ResetOnSpawn = false
     whiteScreen.DisplayOrder = 999999
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+    frame.Size = UDim2.new(1,0,1,0)
+    frame.BackgroundColor3 = Color3.new(0.1,0.1,0.1)
     frame.Parent = whiteScreen
-
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0, 400, 0, 100)
-    label.Position = UDim2.new(0.5, -200, 0.5, -50)
+    label.Size = UDim2.new(0,400,0,100)
+    label.Position = UDim2.new(0.5,-200,0.5,-50)
     label.BackgroundTransparency = 1
-    label.Text = "GPU SAVER ACTIVE\n\nAuto Fish Running..."
-    label.TextColor3 = Color3.new(0, 1, 0)
+    label.Text = "GPU SAVER ACTIVE\nAuto Fishing"
+    label.TextColor3 = Color3.new(0,1,0)
     label.TextSize = 28
     label.Font = Enum.Font.GothamBold
     label.TextAlignment = Enum.TextAlignment.Center
     label.Parent = frame
-
     whiteScreen.Parent = game.CoreGui
-    print("[GPU] GPU Saver enabled")
+    print("[GPU] Enabled")
 end
-
 local function disableGPU()
     if not gpuActive then return end
     gpuActive = false
@@ -294,131 +214,111 @@ local function disableGPU()
         game.Lighting.FogEnd = 100000
         setfpscap(0)
     end)
-    if whiteScreen then
-        whiteScreen:Destroy()
-        whiteScreen = nil
-    end
-    print("[GPU] GPU Saver disabled")
+    if whiteScreen then whiteScreen:Destroy() whiteScreen = nil end
+    print("[GPU] Disabled")
 end
 
--- ====================================================================
--- ANTI-AFK
--- ====================================================================
+-- Anti-AFK
 LocalPlayer.Idle:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
 end)
-print("[Anti-AFK] Protection enabled")
 
--- ====================================================================
--- AUTO FAVORITE
--- ====================================================================
+-- Auto Favorite (unchanged)
 local favoritedItems = {}
-
 local function isItemFavorited(uuid)
-    local success, result = pcall(function()
+    local s,r = pcall(function()
         local items = PlayerData:GetExpect("Inventory").Items
-        for _, item in ipairs(items) do
-            if item.UUID == uuid then
-                return item.Favorited == true
-            end
-        end
+        for _,it in ipairs(items) do if it.UUID == uuid then return it.Favorited == true end end
         return false
     end)
-    return success and result or false
+    return s and r or false
 end
-
 local function autoFavoriteByRarity()
     if not Config.AutoFavorite then return end
-
     local targetRarity = Config.FavoriteRarity
-    local targetValue = getRarityValue(targetRarity)
-    if targetValue < 6 then targetValue = 6 end
-
+    local targetVal = getRarityValue(targetRarity)
+    if targetVal < 6 then targetVal = 6 end
     local favorited = 0
-    local skipped = 0
-
-    local success = pcall(function()
+    pcall(function()
         local items = PlayerData:GetExpect("Inventory").Items
-        if not items or #items == 0 then return end
-
-        for i, item in ipairs(items) do
-            local data = ItemUtility:GetItemData(item.Id)
+        if not items then return end
+        for _,it in ipairs(items) do
+            local data = ItemUtility:GetItemData(it.Id)
             if data and data.Data then
-                local itemName = data.Data.Name or "Unknown"
                 local rarity = getFishRarity(data)
-                local rarityValue = getRarityValue(rarity)
-                if rarityValue == targetValue and rarityValue >= 6 then
-                    if not isItemFavorited(item.UUID) and not favoritedItems[item.UUID] then
-                        Events.favorite:FireServer(item.UUID)
-                        favoritedItems[item.UUID] = true
+                if getRarityValue(rarity) == targetVal and targetVal >= 6 then
+                    if not isItemFavorited(it.UUID) and not favoritedItems[it.UUID] then
+                        Events.favorite:FireServer(it.UUID)
+                        favoritedItems[it.UUID] = true
                         favorited = favorited + 1
-                        print("[Auto Favorite] Favorited: " .. itemName .. " (" .. rarity .. ")")
+                        print("[Favorite] " .. (data.Data.Name or "?") .. " (" .. rarity .. ")")
                         task.wait(0.3)
-                    else
-                        skipped = skipped + 1
                     end
                 end
             end
         end
     end)
-
-    if favorited > 0 then
-        print("[Auto Favorite] Complete! Favorited: " .. favorited)
-    end
+    if favorited > 0 then print("[Favorite] Done: " .. favorited) end
 end
-
-task.spawn(function()
-    while true do
-        task.wait(10)
-        if Config.AutoFavorite then
-            autoFavoriteByRarity()
-        end
-    end
-end)
+task.spawn(function() while true do task.wait(10) if Config.AutoFavorite then autoFavoriteByRarity() end end end)
 
 -- ====================================================================
--- FISHING LOGIC (Modified: randomized delays and parameters)
+-- FISHING LOGIC (human-like, safe)
 -- ====================================================================
 local isFishing = false
 local fishingActive = false
+local lastEquipSlot = nil
 
--- Helper functions with randomization
-local function castRod()
+local function equipRod()
+    -- Only equip if not already equipped (check from toolbar or current tool)
+    local char = LocalPlayer.Character
+    local currentTool = char and char:FindFirstChildOfClass("Tool")
+    if currentTool and currentTool.Name:lower():find("rod") then
+        return true
+    end
     pcall(function()
         Events.equip:FireServer(1)
         task.wait(randomDelay(0.05, 0.02))
-        local chargeVal = getChargeValue()
+        lastEquipSlot = 1
+    end)
+    return true
+end
+
+local function castRod()
+    pcall(function()
+        equipRod()
+        -- Use original values (captured from game) to avoid hash mismatch
+        local chargeVal = 1755848498.4834   -- original value
+        local minigameVal = 1.2854545116425 -- original value
         Events.charge:InvokeServer(chargeVal)
         task.wait(randomDelay(0.02, 0.01))
-        local minigameVal = getMinigameValue()
         Events.minigame:InvokeServer(minigameVal, 1)
-        print("[Fishing] 🎣 Cast (randomized)")
+        print("[Fishing] Cast")
     end)
 end
 
 local function reelIn()
     pcall(function()
-        -- Single reel, no spam
         Events.fishing:FireServer()
-        print("[Fishing] 🎣 Reel")
+        print("[Fishing] Reel")
     end)
 end
 
--- Normal fishing loop with random delays
+-- Main loop with random delays
 local function normalFishingLoop()
     while fishingActive do
         if not isFishing then
             isFishing = true
-            -- Random pre-cast delay (human-like)
-            task.wait(randomDelay(0.2, 0.1))
+            -- Random pre-cast wait (mimic human reaction)
+            task.wait(randomDelay(0.3, 0.2))
             castRod()
-            -- Wait for fish to bite with random variation
-            local fishWait = randomDelay(Config.FishDelay, 0.15)
-            task.wait(fishWait)
+            -- Wait for bite with variation
+            local biteWait = randomDelay(Config.FishDelay, 0.3)
+            task.wait(biteWait)
             reelIn()
-            -- Post-reel delay with random variation
-            local catchWait = randomDelay(Config.CatchDelay, 0.1)
+            -- Post-catch delay
+            local catchWait = randomDelay(Config.CatchDelay, 0.15)
             task.wait(catchWait)
             isFishing = false
         else
@@ -427,85 +327,78 @@ local function normalFishingLoop()
     end
 end
 
--- ====================================================================
--- AUTO CATCH (Modified: single reel with random delay)
--- ====================================================================
+-- AUTO CATCH (optional but risky, we add warning)
 task.spawn(function()
     while true do
         if Config.AutoCatch and not isFishing then
             pcall(function()
                 Events.fishing:FireServer()
             end)
-            -- Use random delay to avoid pattern
-            task.wait(randomDelay(Config.CatchDelay, 0.1))
+            task.wait(randomDelay(Config.CatchDelay, 0.15))
         else
             task.wait(0.5)
         end
     end
 end)
 
--- ====================================================================
--- AUTO SELL
--- ====================================================================
+-- Auto sell
 local function simpleSell()
-    print(" ")
-    print("[Auto Sell] Selling all non-favorited items...")
-    local sellSuccess = pcall(function()
-        return Events.sell:InvokeServer()
-    end)
-    if sellSuccess then
-        print("[Auto Sell] SOLD! (Favorited fish kept safe)")
-    else
-        warn("[Auto Sell] Sell failed")
-    end
-    print(" ")
+    print("[Sell] Selling...")
+    local s = pcall(function() return Events.sell:InvokeServer() end)
+    if s then print("[Sell] Done (favorites kept)") else warn("[Sell] Failed") end
 end
-
 task.spawn(function()
     while true do
         task.wait(Config.SellDelay)
-        if Config.AutoSell then
-            simpleSell()
-        end
+        if Config.AutoSell then simpleSell() end
     end
 end)
 
 -- ====================================================================
--- RAYFIELD UI (renamed to KaeruShi HUB V0.1, watermark removed)
+-- RAYFIELD UI - TABLET PROFESSIONAL
 -- ====================================================================
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Window = Rayfield:CreateWindow({
-    Name = "KaeruShi HUB V0.1",
-    LoadingTitle = "Ultra-Fast Fishing",
-    LoadingSubtitle = "Working Method Implementation",
-    ConfigurationSaving = {
-        Enabled = false
-    },
-    DisableWatermark = true   -- Remove Rayfield watermark
+-- Custom theme for professional look
+Rayfield:SetConfiguration({
+    Theme = "Dark",
+    Font = Enum.Font.Gotham,
+    AccentColor = Color3.fromRGB(0, 150, 255),
+    BackgroundColor = Color3.fromRGB(20, 20, 25),
+    TextColor = Color3.fromRGB(240, 240, 240)
 })
 
--- Ensure watermark is destroyed (fallback)
-pcall(function()
-    Rayfield:DestroyWatermark()
-end)
+local Window = Rayfield:CreateWindow({
+    Name = "KaeruShi HUB | v0.2",
+    LoadingTitle = "KaeruShi Fishing",
+    LoadingSubtitle = "Tablet Optimized",
+    ConfigurationSaving = { Enabled = false },
+    DisableWatermark = true,
+    Size = UDim2.new(0, 550, 0, 620)  -- Comfortable for tablet
+})
 
--- MAIN TAB
-local MainTab = Window:CreateTab(" Main", 4483362458)
+-- Destroy watermark
+pcall(Rayfield.DestroyWatermark)
 
+-- Create tabs
+local MainTab = Window:CreateTab("🎣 Fishing", nil)
+local TeleportTab = Window:CreateTab("🌍 Teleport", nil)
+local SettingsTab = Window:CreateTab("⚙️ Settings", nil)
+local InfoTab = Window:CreateTab("ℹ️ Info", nil)
+
+-- Main tab
 MainTab:CreateSection("Auto Fishing")
-
 local AutoFishToggle = MainTab:CreateToggle({
-    Name = "🤖 Auto Fish",
+    Name = "🤖 Auto Fish (Safe Mode)",
     CurrentValue = Config.AutoFish,
-    Callback = function(value)
-        Config.AutoFish = value
-        fishingActive = value
-        if value then
-            print("[Auto Fish] 🟢 Started (Normal Mode)")
+    Callback = function(v)
+        Config.AutoFish = v
+        fishingActive = v
+        if v then
+            print("[AutoFish] Started (safe mode)")
             task.spawn(normalFishingLoop)
         else
-            print("[Auto Fish] 🔴 Stopped")
+            print("[AutoFish] Stopped")
             pcall(function() Events.unequip:FireServer() end)
         end
         saveConfig()
@@ -513,171 +406,137 @@ local AutoFishToggle = MainTab:CreateToggle({
 })
 
 local AutoCatchToggle = MainTab:CreateToggle({
-    Name = "🎯 Auto Catch (Extra Speed)",
+    Name = "⚠️ Auto Catch (High Risk)",
     CurrentValue = Config.AutoCatch,
-    Callback = function(value)
-        Config.AutoCatch = value
-        print("[Auto Catch] " .. (value and "🟢 Enabled" or "🔴 Disabled"))
+    Callback = function(v)
+        Config.AutoCatch = v
+        if v then
+            print("[WARNING] Auto Catch enabled - may trigger anti-cheat!")
+        end
         saveConfig()
     end
 })
 
 MainTab:CreateInput({
-    Name = "Fish Delay (seconds)",
-    PlaceholderText = "Default: 0.9",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(value)
-        local num = tonumber(value)
-        if num and num >= 0.1 and num <= 10 then
+    Name = "Fish Delay (sec)",
+    PlaceholderText = "Default: 1.2",
+    Callback = function(val)
+        local num = tonumber(val)
+        if num and num >= 0.5 and num <= 5 then
             Config.FishDelay = num
-            print("[Config] ✅ Fish delay set to " .. num .. "s")
             saveConfig()
-        else
-            warn("[Config] ❌ Invalid delay (must be 0.1-10)")
         end
     end
 })
-
 MainTab:CreateInput({
-    Name = "Catch Delay (seconds)",
-    PlaceholderText = "Default: 0.2",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(value)
-        local num = tonumber(value)
-        if num and num >= 0.1 and num <= 10 then
+    Name = "Catch Delay (sec)",
+    PlaceholderText = "Default: 0.4",
+    Callback = function(val)
+        local num = tonumber(val)
+        if num and num >= 0.2 and num <= 2 then
             Config.CatchDelay = num
-            print("[Config] ✅ Catch delay set to " .. num .. "s")
             saveConfig()
-        else
-            warn("[Config] ❌ Invalid delay (must be 0.1-10)")
         end
     end
 })
 
 MainTab:CreateSection("Auto Sell")
-
 local AutoSellToggle = MainTab:CreateToggle({
-    Name = "💰 Auto Sell (Keeps Favorited)",
+    Name = "💰 Auto Sell (Keeps Favorites)",
     CurrentValue = Config.AutoSell,
-    Callback = function(value)
-        Config.AutoSell = value
-        print("[Auto Sell] " .. (value and "🟢 Enabled" or "🔴 Disabled"))
+    Callback = function(v)
+        Config.AutoSell = v
         saveConfig()
     end
 })
-
 MainTab:CreateInput({
-    Name = "Sell Delay (seconds)",
-    PlaceholderText = "Default: 30",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(value)
-        local num = tonumber(value)
-        if num and num >= 10 and num <= 300 then
+    Name = "Sell Delay (sec)",
+    PlaceholderText = "Default: 45",
+    Callback = function(val)
+        local num = tonumber(val)
+        if num and num >= 15 and num <= 300 then
             Config.SellDelay = num
-            print("[Config] ✅ Sell delay set to " .. num .. "s")
             saveConfig()
-        else
-            warn("[Config] ❌ Invalid delay (must be 10-300)")
         end
     end
 })
-
 MainTab:CreateButton({
     Name = "💰 Sell All Now",
-    Callback = function()
-        simpleSell()
-    end
+    Callback = simpleSell
 })
 
--- TELEPORT TAB (from dev1.lua)
-local TeleportTab = Window:CreateTab("🌍 Teleport", nil)
-
+-- Teleport tab
 TeleportTab:CreateSection("📍 Locations")
-for locationName, _ in pairs(LOCATIONS) do
+for name, _ in pairs(LOCATIONS) do
     TeleportTab:CreateButton({
-        Name = locationName,
-        Callback = function()
-            Teleport.to(locationName)
-        end
+        Name = name,
+        Callback = function() Teleport.to(name) end
     })
 end
 
--- SETTINGS TAB
-local SettingsTab = Window:CreateTab("⚙️ Settings", 4483362458)
-
+-- Settings tab
 SettingsTab:CreateSection("Performance")
-
 local GPUToggle = SettingsTab:CreateToggle({
     Name = "💻 GPU Saver Mode",
     CurrentValue = Config.GPUSaver,
-    Callback = function(value)
-        Config.GPUSaver = value
-        if value then
-            enableGPU()
-        else
-            disableGPU()
-        end
+    Callback = function(v)
+        Config.GPUSaver = v
+        if v then enableGPU() else disableGPU() end
         saveConfig()
     end
 })
 
 SettingsTab:CreateSection("Auto Favorite")
-
-local AutoFavoriteToggle = SettingsTab:CreateToggle({
-    Name = "⭐ Auto Favorite Fish",
+local AutoFavToggle = SettingsTab:CreateToggle({
+    Name = "⭐ Auto Favorite",
     CurrentValue = Config.AutoFavorite,
-    Callback = function(value)
-        Config.AutoFavorite = value
-        print("[Auto Favorite] " .. (value and "🟢 Enabled" or "🔴 Disabled"))
+    Callback = function(v)
+        Config.AutoFavorite = v
         saveConfig()
     end
 })
-
-local FavoriteRarityDropdown = SettingsTab:CreateDropdown({
-    Name = "Favorite Rarity (Mythic/Secret Only)",
+local RarityDropdown = SettingsTab:CreateDropdown({
+    Name = "Favorite Rarity",
     Options = {"Mythic", "Secret"},
     CurrentOption = Config.FavoriteRarity,
-    Callback = function(option)
-        Config.FavoriteRarity = option
-        print("[Config] Favorite rarity set to: " .. option .. "+")
+    Callback = function(opt)
+        Config.FavoriteRarity = opt
         saveConfig()
     end
 })
-
 SettingsTab:CreateButton({
-    Name = "⭐ Favorite All Mythic/Secret Now",
-    Callback = function()
-        autoFavoriteByRarity()
-    end
+    Name = "⭐ Favorite All Now",
+    Callback = autoFavoriteByRarity
 })
 
--- INFO TAB
-local InfoTab = Window:CreateTab("ℹ️ Info", 4483362458)
-
+-- Info tab
 InfoTab:CreateParagraph({
-    Title = "Features",
+    Title = "KaeruShi HUB v0.2",
     Content = [[
-• Fast Auto Fishing
-• Simple Auto Sell (keeps favorited fish)
-• Auto Catch for extra speed
-• GPU Saver Mode
-• Anti-AFK Protection
-• Auto Save Configuration
-• Teleport System (dev1.lua method)
-• Auto Favorite (Mythic & Secret only)
-]]
+• Safe Auto Fishing (human-like delays)
+• Auto Sell (keeps favorited fish)
+• Teleport system
+• GPU Saver / Anti-AFK
+• Auto Favorite (Mythic/Secret)
+• Optimized for tablet screens
+    ]]
+})
+InfoTab:CreateParagraph({
+    Title = "⚠️ Warning",
+    Content = [[
+Auto Catch feature is high risk.
+Use at your own risk. 
+Avoid using very low delays.
+    ]]
 })
 
--- STARTUP
+-- Startup notification
 Rayfield:Notify({
-    Title = "KaeruShi HUB Loaded",
-    Content = "Ready to fish!",
-    Duration = 5,
+    Title = "KaeruShi HUB",
+    Content = "Ready to fish | Safe Mode",
+    Duration = 4,
     Image = 4483362458
 })
 
-print("KaeruShi HUB V0.1 - Loaded!")
-print("Using YOUR working fishing method")
-print("Teleport system from dev1.lua integrated")
-print("Anti-Cheat protection active")
-print("Ready to fish!")
+print("KaeruShi HUB v0.2 Loaded - Tablet Edition")
+print("Anti-Cheat enhanced | Safe fishing mode")
