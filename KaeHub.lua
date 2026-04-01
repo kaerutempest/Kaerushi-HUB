@@ -427,18 +427,24 @@ task.spawn(function()
 end)
 
 -- ====================================================================
--- RAYFIELD UI (renamed to KaeruShi HUB V.01)
+-- RAYFIELD UI (renamed to KaeruShi HUB V0.1, watermark removed)
 -- ====================================================================
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "KaeruShi HUB V. 01",
+    Name = "KaeruShi HUB V0.1",
     LoadingTitle = "Ultra-Fast Fishing",
     LoadingSubtitle = "Working Method Implementation",
     ConfigurationSaving = {
         Enabled = false
-    }
+    },
+    DisableWatermark = true   -- Remove Rayfield watermark
 })
+
+-- Ensure watermark is destroyed (fallback)
+pcall(function()
+    Rayfield:DestroyWatermark()
+end)
 
 -- MAIN TAB
 local MainTab = Window:CreateTab(" Main", 4483362458)
@@ -626,7 +632,7 @@ Rayfield:Notify({
     Image = 4483362458
 })
 
-print("KaeruShi HUB V.01 - Loaded!")
+print("KaeruShi HUB V0.1 - Loaded!")
 print("Using YOUR working fishing method")
 print("Teleport system from dev1.lua integrated")
 print("Anti-Cheat protection active")
